@@ -1,0 +1,239 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   c4
+Chu_versio :  420
+Nekonata1  :   1a
+Fiksa1     :   f0
+N sistemoj :    5
+N paghoj   :    1
+N1 liniaroj:    1
+N2 liniaroj:    1
+N mezuroj  :   15
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : 
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : 
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : #P
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: 
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 02
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 03
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 04
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 05
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 1
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ g'1 [24] (vocho: 0)
+--------------
+---> Mezuro 2
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark \markup {\musicglyph #"scripts.segno"}
+ Objektoj (en liniaroj):
+ a'1 [24] (vocho: 0)
+--------------
+---> Mezuro 3
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark \markup {\musicglyph #"scripts.coda"}
+ Objektoj (en liniaroj):
+ b'1 [25] (vocho: 0)
+--------------
+---> Mezuro 4
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x1
+	Saltsigno : \mark "Fine"
+ Objektoj (en liniaroj):
+ b'1 [28] (vocho: 0)
+--------------
+---> Mezuro 5
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |}
+	Ripetsalto: 0x2
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ d''1 [26] (vocho: 0)
+--------------
+---> Mezuro 6
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x4
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''1 [27] (vocho: 0)
+--------------
+---> Mezuro 7
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : \repeat volta 2 {|
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ b'1 [27] (vocho: 0)
+--------------
+---> Mezuro 8
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |}
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''1 [26] (vocho: 0)
+--------------
+---> Mezuro 9
+	Grando    : 30 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark \markup {D.S. e Coda}
+ Objektoj (en liniaroj):
+ c''1 [27] (vocho: 0)
+--------------
+---> Mezuro 10
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark \markup {\musicglyph #"scripts.coda"}
+ Objektoj (en liniaroj):
+ g'2 [21] (vocho: 0)
+ a'2 [98] (vocho: 0)
+--------------
+---> Mezuro 11
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ e''2 [21] (vocho: 0)
+ a''2 [98] (vocho: 0)
+--------------
+---> Mezuro 12
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ a'2 [21] (vocho: 0)
+ g'2 [98] (vocho: 0)
+--------------
+---> Mezuro 13
+	Grando    : 86 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c'''2 [21] (vocho: 0)
+ \< [0;46 -> 0;194] (vocho: 0)
+ g''2 [98] (vocho: 0)
+ \! [0;194 -> 0;194] (vocho: 0)
+--------------
+---> Mezuro 14
+	Grando    : 86 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ \> [0;19 -> 0;160] (vocho: 0)
+ g'2 [21] (vocho: 0)
+ e''2 [98] (vocho: 0)
+ \! [0;160 -> 0;160] (vocho: 0)
+--------------
+---> Mezuro 15
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "D.C. al Fine"
+ Objektoj (en liniaroj):
+ b''2 [20] (vocho: 0)
+ d''2 [94] (vocho: 0)
+--------------

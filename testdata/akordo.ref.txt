@@ -1,0 +1,118 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   c4
+Chu_versio :  420
+Nekonata1  :   19
+Fiksa1     :   f0
+N sistemoj :    2
+N paghoj   :    1
+N1 liniaroj:    1
+N2 liniaroj:    1
+N mezuroj  :    6
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : 
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : 
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : #P
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: 
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 02
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 1
+	Grando    : 527 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''1 [24] (vocho: 0)
+ ^"a:A01234567890123" [39] (vocho: 0)
+--------------
+---> Mezuro 2
+	Grando    : 46 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ d''1 [24] (vocho: 0)
+ ^"aes:13sus4/fis" [48] (vocho: 0)
+--------------
+---> Mezuro 3
+	Grando    : 84 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ g'1 [25] (vocho: 0)
+ ^"a:APersonigita � � �" [40] (vocho: 0)
+--------------
+---> Mezuro 4
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+---> Mezuro 5
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+---> Mezuro 6
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------

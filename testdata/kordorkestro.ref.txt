@@ -1,0 +1,209 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   c4
+Chu_versio :  420
+Nekonata1  :   23
+Fiksa1     :   f0
+N sistemoj :    2
+N paghoj   :    1
+N1 liniaroj:    6
+N2 liniaroj:    7
+N mezuroj  :    6
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : String Orchestra w/Piano
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : Composer
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : 
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : © Publisher
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: Violin I
+	02: Violin II
+	03: Viola
+	04: Cello
+	05: Double Bass
+
+	06: Piano
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0xf0
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 1
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 2
+		Tipo  : melodio
+		Klefo : alto
+		Tonalo: c
+	---> Liniaro: 3
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 4
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 5
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 6
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+  ---> Linio 02
+	Tipo   : 0xf0
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 1
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 2
+		Tipo  : melodio
+		Klefo : alto
+		Tonalo: c
+	---> Liniaro: 3
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 4
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 5
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 6
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 1
+	Grando    : 198 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ a'2 [21] (vocho: 0)
+--------------
+ d''2 [21] (vocho: 0)
+--------------
+ d'2 [21] (vocho: 0)
+--------------
+ c'2 [21] (vocho: 0)
+--------------
+ b2 [21] (vocho: 0)
+--------------
+ b,2 [21] (vocho: 4)
+ d''2 [21] (vocho: 0)
+--------------
+--------------
+---> Mezuro 2
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+---> Mezuro 3
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+---> Mezuro 4
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+---> Mezuro 5
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+---> Mezuro 6
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------

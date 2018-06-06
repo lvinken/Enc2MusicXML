@@ -1,0 +1,174 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   c4
+Chu_versio :  420
+Nekonata1  :   19
+Fiksa1     :   f0
+N sistemoj :    3
+N paghoj   :    1
+N1 liniaroj:    1
+N2 liniaroj:    1
+N mezuroj  :    9
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : 
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : 
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : #P
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: 
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 02
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 03
+	Tipo   : 0x38
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 1
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ a''16! [25] (vocho: 0)
+ g''4 [40] (vocho: 0)
+--------------
+---> Mezuro 2
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ a''16! [19] (vocho: 0)
+ g''4 [40] (vocho: 0)
+--------------
+---> Mezuro 3
+	Grando    : 58 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ g''8! [17] (vocho: 0)
+ g''4 [50] (vocho: 0)
+--------------
+---> Mezuro 4
+	Grando    : 144 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''4 [14] (vocho: 0)
+ c''8! [50] (vocho: 0)
+ a'8! [76] (vocho: 0)
+ g'4 [102] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 5
+	Grando    : 188 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''4 [13] (vocho: 0)
+ d''8! [64] (vocho: 0)
+ c''16! [74] (vocho: 0)
+ a'16! [82] (vocho: 0)
+ c''4 [96] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 6
+	Grando    : 188 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''4 [13] (vocho: 0)
+ d''8! [49] (vocho: 0)
+ c''16! [74] (vocho: 0)
+ g'16! [89] (vocho: 0)
+ b'4 [104] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 7
+	Grando    : 144 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ d''8 [16] (vocho: 0)
+ e''8 [45] (vocho: 0)
+ d''4! [99] (vocho: 0)
+ c''2 [116] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 8
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+---> Mezuro 9
+	Grando    : 2 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------

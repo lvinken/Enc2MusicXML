@@ -1,0 +1,89 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   C4
+Chu_versio : 0420
+Nekonata1  : 0019
+Fiksa1     : 00F0
+N sistemoj :    1
+N paghoj   :    1
+N1 liniaroj:    1
+N2 liniaroj:    1
+N mezuroj  :    2
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : 
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : 
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : #P
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: 
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x38 ('8')
+	Mezuroj: 2
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 01
+	Grando    : 286 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ b'8-\rightHandFinger #1  [15] (vocho: 0)
+ d''8-\rightHandFinger #2  [43] (vocho: 0)
+ d''8-\rightHandFinger #3  [71] (vocho: 0)
+ c''8-\rightHandFinger #4  [99] (vocho: 0)
+ d''8-\rightHandFinger #5  [127] (vocho: 0)
+ d''8-P [155] (vocho: 0)
+ f''8-H [183] (vocho: 0)
+ d''8-T [211] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 02
+	Grando    : 286 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ f''8\1 [15] (vocho: 0)
+ e''8\2 [42] (vocho: 0)
+ e''8\3 [69] (vocho: 0)
+ g''8\4 [96] (vocho: 0)
+ f''8\5 [124] (vocho: 0)
+ f''8\6 [151] (vocho: 0)
+ f''8\7 [178] (vocho: 0)
+ f''8\8 [206] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------

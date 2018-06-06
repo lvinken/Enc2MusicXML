@@ -1,0 +1,7 @@
+.DS_Store
+.qmake.stash
+Makefile
+Enc2MusicXML
+Enc2MusicXML.pro.user
+*.o
+testdata/*.out

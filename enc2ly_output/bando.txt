@@ -1,0 +1,238 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   C4
+Chu_versio : 0420
+Nekonata1  : 0043
+Fiksa1     : 00F0
+N sistemoj :    1
+N paghoj   :    1
+N1 liniaroj:   21
+N2 liniaroj:   21
+N mezuroj  :    3
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : Concert Band
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : Composer
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : 
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: Flute  
+	02: Oboe
+	03: Bassoon
+	04: Clarinet 1
+	05: Clarinet 2
+	06: Clarinet 3
+	07: Bass Clarinet 
+	08: Alto Sax
+	09: Tenor Sax
+	10: Baritone Sax
+	11: Trumpet 1
+	12: Trumpet 2&3
+	13: French Horn 1
+	14: Trombone 1
+	15: Trombone 2&3    
+	16: Baritone Horn
+	17: Tuba
+	18: Xylophone
+	19: Timpani
+	20: Percussion 1
+	21: Percussion 2
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x96 ('�')
+	Mezuroj: 3
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 1
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 2
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 3
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 4
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 5
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 6
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 7
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: a
+	---> Liniaro: 8
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 9
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: a
+	---> Liniaro: 10
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 11
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: d
+	---> Liniaro: 12
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: g
+	---> Liniaro: 13
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 14
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 15
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 16
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 17
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+	---> Liniaro: 18
+		Tipo  : melodio
+		Klefo : bass
+		Tonalo: c
+	---> Liniaro: 19
+		Tipo  : melodio
+		Klefo : percussion
+		Tonalo: c
+	---> Liniaro: 20
+		Tipo  : melodio
+		Klefo : percussion
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 01
+	Grando    : 002 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+---> Mezuro 02
+	Grando    : 002 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+---> Mezuro 03
+	Grando    : 002 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------
+--------------

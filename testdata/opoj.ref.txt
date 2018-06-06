@@ -1,0 +1,102 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   c4
+Chu_versio :  420
+Nekonata1  :   19
+Fiksa1     :   f0
+N sistemoj :    1
+N paghoj   :    1
+N1 liniaroj:    1
+N2 liniaroj:    1
+N mezuroj  :    2
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : 
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : 
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : #P
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: 
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x38
+	Mezuroj: 2
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 1
+	Grando    : 322 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''82/3 [13] (vocho: 0)
+ f''82/3 [33] (vocho: 0)
+ e''82/3 [53] (vocho: 0)
+ b'82/3 [74] (vocho: 0)
+ d''82/3 [94] (vocho: 0)
+ c''82/3 [114] (vocho: 0)
+ e'42/3 [134] (vocho: 0)
+ r8 [159] (vocho: 0)
+ d''82/3 [179] (vocho: 0)
+ r4 [199] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 2
+	Grando    : 660 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''164/6 [10] (vocho: 0)
+ a'164/6 [21] (vocho: 0)
+ g'164/6 [33] (vocho: 0)
+ g''164/6 [44] (vocho: 0)
+ b'164/6 [55] (vocho: 0)
+ b''164/6 [67] (vocho: 0)
+ f''164/6 [78] (vocho: 0)
+ e''164/6 [89] (vocho: 0)
+ a'164/6 [101] (vocho: 0)
+ b164/6 [112] (vocho: 0)
+ c''164/6 [123] (vocho: 0)
+ d'164/6 [135] (vocho: 0)
+ f''164/5 [146] (vocho: 0)
+ f'84/5 [157] (vocho: 0)
+ c'164/5 [169] (vocho: 0)
+ a'164/5 [180] (vocho: 0)
+ c''164/5 [191] (vocho: 0)
+ a'44/5 [203] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------

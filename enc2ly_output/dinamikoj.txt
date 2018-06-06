@@ -1,0 +1,109 @@
+---- KAPO ----
+Magio      : SCOW
+Chu_magio  :   C4
+Chu_versio : 0420
+Nekonata1  : 0019
+Fiksa1     : 00F0
+N sistemoj :    2
+N paghoj   :    1
+N1 liniaroj:    1
+N2 liniaroj:    1
+N mezuroj  :    4
+
+---- TITOLOJ ----
+-->  Grando: 21242 B
+  Titolo      : 
+  Subtitolo 0 : 
+  Subtitolo 1 : 
+  Instrukcio 0: 
+  Instrukcio 1: 
+  Instrukcio 2: 
+  Autoro 0    : 
+  Autoro 1    : 
+  Autoro 2    : 
+  Autoro 3    : 
+  Kapo 0      : #P
+  Kapo 1      : 
+  Piedo 0     : 
+  Piedo 1     : 
+  Kopirajto 0 : 
+  Kopirajto 1 : 
+  Kopirajto 2 : 
+  Kopirajto 3 : 
+  Kopirajto 4 : 
+  Kopirajto 5 : 
+
+---- TEKSTOJ ----
+  --> Kiom: 0
+
+---- INSTRUMENTOJ ----
+	01: 
+
+---- LINIOJ ----
+  ---> Linio 01
+	Tipo   : 0x38 ('8')
+	Mezuroj: 2
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+  ---> Linio 02
+	Tipo   : 0x38 ('8')
+	Mezuroj: 2
+	---> Liniaro: 0
+		Tipo  : melodio
+		Klefo : treble
+		Tonalo: c
+
+---- MEZUROJ ----
+---> Mezuro 01
+	Grando    : 114 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ a'2 [28] (vocho: 0)
+ \< [0;063 -> 0;176] (vocho: 0)
+ ( [0;076 -> 0;183] (vocho: 0)
+ g'2 [134] (vocho: 0)
+ ) [0;183 -> 0;183] (vocho: 0)
+--------------
+---> Mezuro 02
+	Grando    : 256 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+ c''8 [17] (vocho: 0)
+ ( [0;023 -> 0;121] (vocho: 0)
+ \> [0;023 -> 0;191] (vocho: 0)
+ e''8 [50] (vocho: 0)
+ g''8 [83] (vocho: 0)
+ g'8 [115] (vocho: 0)
+ ) [0;121 -> 0;121] (vocho: 0)
+ d''4 [148] (vocho: 0)
+ e''4 [193] (vocho: 0)
+ Vostligo [255] (vocho: 0)
+--------------
+---> Mezuro 03
+	Grando    : 002 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : ||
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
+---> Mezuro 04
+	Grando    : 002 B
+	Rapido    : 100 FPM
+	Takto     : 4/4
+	Stangoj   : |\bar "|."
+	Ripetsalto: 0x0
+	Saltsigno : \mark "¿saltsigno?"
+ Objektoj (en liniaroj):
+--------------
