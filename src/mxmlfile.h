@@ -50,12 +50,14 @@ class MxmlFile
 public:
     MxmlFile(const EncFile& ef);
     void write();
-    void writeAttributes();
-    void writeClef();
+    void writeAttributes(const int idx);
+    void writeBarlineLeft(const int partNr, const size_t measureNr);
+    void writeBarlineRight(const int partNr, const size_t measureNr);
+    void writeClef(const int idx);
     void writeIdentification();
     void writeKey();
     void writeKeyChange(const EncMeasureElemKeyChange* keyChange);
-    void writeMeasure(const size_t measureNr);
+    void writeMeasure(const int partNr, const size_t measureNr);
     void writeNote(const EncMeasureElemNote* const note, TupletHandler &th);
     void writePart(const int n);
     void writePartList();

@@ -124,6 +124,13 @@ enum class clefType : qint8 {
 };
 
 
+enum class accidentalType : quint8 {
+    NONE = 0,
+    SHARP,
+    FLAT,
+    NATURAL
+};
+
 //---------------------------------------------------------
 // one line (staff) in a system
 //---------------------------------------------------------
@@ -301,6 +308,32 @@ public:
 // a measure ("MEAS") block
 //---------------------------------------------------------
 
+
+enum class barlineType : quint8 {
+    NORMAL      = 0,
+    REPEATSTART = 2,
+    DOUBLEL     = 3,
+    REPEATEND   = 4,
+    FINAL       = 5,
+    DOUBLER     = 6
+};
+
+
+enum class repeatType : quint8 {
+    NONE        = 0,
+    DCALCODA    = 0x80,
+    DSALCODA    = 0x81,
+    DCALFINE    = 0x82,
+    DSALFINE    = 0x83,
+    DS          = 0x84,
+    CODA1       = 0x85,
+    FINE        = 0x86,
+    DC          = 0x87,
+    SEGNO       = 0x88,
+    CODA2       = 0x89
+};
+
+
 class EncMeasure                        // ENCORE_MEZURO
 {
 public:
@@ -308,6 +341,9 @@ public:
     bool read(QDataStream& data, const quint32 var_size);
     const MeasureElemVec& measureElems() const { return m_measureElems; }
     void push_back(EncMeasureElem* elem) { m_measureElems.push_back(elem); }
+    barlineType barTypeStart() const { return static_cast<barlineType>(m_barTypeStart); }
+    barlineType barTypeEnd() const { return static_cast<barlineType>(m_barTypeEnd); }
+    repeatType repeat() const { return static_cast<repeatType>((m_coda >> 8) & 0xFF); }
     QString m_id;
     qint32  m_varsize           { 0 };
     quint16 m_bpm               { 0 };

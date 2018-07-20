@@ -1,0 +1,11 @@
+Version 0.2 (2018-07-20)
+
+- Support repeats, including alternative endings and segno and coda.
+- Support different clefs.
+- Improve accidental handling.
+- Support multi-line header text.
+- Support multiple single staff / single voice parts.
+
+Version 0.1 (2018-06-06)
+
+Proof of concept. Only files with a single part using one voice are supported.

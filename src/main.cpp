@@ -50,11 +50,12 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("Enc2MusicXML");
-    QCoreApplication::setApplicationVersion("0.1");
+    QCoreApplication::setApplicationVersion("0.2");
 
     QCommandLineParser clp;
-    clp.setApplicationDescription("Enc2MusicXML converts Encore files to LilyPond.");
+    clp.setApplicationDescription("Enc2MusicXML converts Encore files to MusicXML.");
     clp.addHelpOption();
+    clp.addVersionOption();
     clp.addOptions({
                        {{"a", "analyse"},
                         QCoreApplication::translate("main", "Analyse file(s).")},

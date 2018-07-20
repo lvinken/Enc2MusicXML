@@ -5,8 +5,6 @@
     <work-title></work-title>
   </work>
   <identification>
-    <creator type="composer"></creator>
-    <rights></rights>
     <encoding>
       <software>Enc2MusicXML</software>
     </encoding>

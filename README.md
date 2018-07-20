@@ -4,8 +4,8 @@ It was developed using Qt 5.8.0 and Apple LLVM version 7.3.0
 
 ## Status
 
-Proof of concept. It extracts the same information from Encore files as does enc2ly,
-but the MusicXML export is very rudimentary.
+In development. Enc2MusicXML extracts the same information from Encore files as does enc2ly,
+but the MusicXML export is still incomplete.
 
 ## Building
 

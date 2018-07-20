@@ -11,7 +11,7 @@ failures=0
 rwtest() {
       echo -n "testing $2 $3";
       REF=$2.ref.$3
-      RES=$2.$3.out
+      RES=$2.out.$3
       SRC=$2.enc
       $1 -$4 $SRC >$RES 2> /dev/null
       if diff -q $REF $RES &> /dev/null; then
