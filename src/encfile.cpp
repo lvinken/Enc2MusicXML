@@ -675,8 +675,9 @@ bool EncMeasureElemNote::read(QDataStream& data)
     qDebug() << "EncMeasureElemNote::read()";
     EncMeasureElem::read(data);
     data >> m_faceValue;
-    data >> m_grace;
-    data.skipRawData(3);
+    data >> m_grace1;
+    data >> m_grace2;
+    data.skipRawData(2);
     data >> m_xoffset;
     data.skipRawData(1);
     data >> m_position;
@@ -695,7 +696,8 @@ bool EncMeasureElemNote::read(QDataStream& data)
     data.skipRawData(m_size - 27);     // skip to end
     qDebug()
             << "m_faceValue" << m_faceValue
-            << "m_grace" << m_grace
+            << "m_grace1" << m_grace1
+            << "m_grace2" << m_grace2
             << "m_xoffset" << m_xoffset
             << "m_position" << m_position
             << "m_tuplet" << m_tuplet
@@ -711,6 +713,24 @@ bool EncMeasureElemNote::read(QDataStream& data)
 
     return true;
 }
+
+
+graceType EncMeasureElemNote::graceType() const
+{
+    quint8 grace1 = m_grace1 & 0x30;
+    quint8 grace2 = m_grace2 & 0x05;
+
+    // algorithm copied from enc2ly
+    if (grace1 == 0x20 && grace2 == 0x04) {
+        return graceType::ACCIACCATURA;
+    }
+    else if (grace1 > 0x10 && grace2 != 0x01) {
+        return graceType::APPOGGIATURA;
+    }
+
+    return graceType::NORMALNOTE;
+}
+
 
 //---------------------------------------------------------
 // EncMeasureElemRest

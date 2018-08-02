@@ -49,8 +49,10 @@ class MxmlFile
 {
 public:
     MxmlFile(const EncFile& ef);
+    bool hasMultipleVoices(const int partNr) const { return m_voicesPerPart.at(partNr) > 1; }
     void write();
     void writeAttributes(const int idx);
+    void writeBackupForward(const int duration, const int voice);
     void writeBarlineLeft(const int partNr, const size_t measureNr);
     void writeBarlineRight(const int partNr, const size_t measureNr);
     void writeClef(const int idx);
@@ -58,17 +60,19 @@ public:
     void writeKey();
     void writeKeyChange(const EncMeasureElemKeyChange* keyChange);
     void writeMeasure(const int partNr, const size_t measureNr);
-    void writeNote(const EncMeasureElemNote* const note, TupletHandler &th);
+    void writeNote(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord);
     void writePart(const int n);
     void writePartList();
     void writeParts();
-    void writeRest(const EncMeasureElemRest* const rest, TupletHandler &th);
+    void writeRest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th);
     void writeScorePart(const int n, const EncStaff& staff);
     void writeTime();
     void writeWork();
 private:
+    void initVoicesPerPart();
     const EncFile& m_ef;
     QTextStream m_out;
+    std::vector<std::size_t> m_voicesPerPart;
 };
 
 #endif // MXMLFILE_H

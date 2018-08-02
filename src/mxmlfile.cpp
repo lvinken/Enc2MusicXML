@@ -17,6 +17,8 @@
 /*  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.           */
 /*****************************************************************************/
 
+#include <set>
+
 #include <QFile>
 #include <QtDebug>
 
@@ -28,18 +30,24 @@
 // faceValue2duration - convert Encore note type to duration
 //---------------------------------------------------------
 
+/*
+ * note Encore uses:
+ * value 3 -> 240
+ * value 4 -> 120
+ */
+
 static int faceValue2duration(const quint8 faceValue)
 {
     switch (faceValue) {
     //case 0: return "0";
-    case 1: return 1920;
-    case 2: return  960;
-    case 3: return  480;
-    case 4: return  240;
-    case 5: return  120;
-    case 6: return   60;
-    case 7: return   30;
-    case 8: return   15;
+    case 1: return  960;
+    case 2: return  480;
+    case 3: return  240;
+    case 4: return  120;
+    case 5: return   60;
+    case 6: return   30;
+    case 7: return   15;
+    case 8: return    7;
     }
     return 0;
 }
@@ -199,13 +207,51 @@ TupletHandler::type TupletHandler::newNote(const quint8 actualNotes, const quint
 
 
 //---------------------------------------------------------
+// nrOfVoicesInPart - count the voices in a part
+//---------------------------------------------------------
+
+static int nrOfVoicesInPart(const EncFile& ef, const int firstStaff, const int nstaves)
+{
+    std::set<quint8> voices;
+    for (const auto& m : ef.measures()) {
+        for (const auto e : m.measureElems()) {
+            if (firstStaff <= e->m_staffIdx && e->m_staffIdx < (firstStaff + nstaves))
+                voices.insert(e->m_voice);
+        }
+    }
+
+    return voices.size();
+}
+
+
+//---------------------------------------------------------
+// initVoicesPerPart - count the voices in all parts
+//---------------------------------------------------------
+
+void MxmlFile::initVoicesPerPart()
+{
+    int count = 0;
+    for (size_t i = 0; i < m_ef.staves().size(); ++i) {
+        m_voicesPerPart.push_back(nrOfVoicesInPart(m_ef, count, 1));
+        qDebug()
+                << "initVoicesPerPart"
+                << "part" << count + 1
+                << "voices" << m_voicesPerPart.at(count)
+                   ;
+        ++count;
+    }
+
+}
+
+
+//---------------------------------------------------------
 // MxmlFile - MusicXML file writer constructor
 //---------------------------------------------------------
 
 MxmlFile::MxmlFile(const EncFile& ef)
     : m_ef(ef)
 {
-
+    initVoicesPerPart();
 }
 
 
@@ -239,11 +285,31 @@ void MxmlFile::write()
 void MxmlFile::writeAttributes(const int idx)
 {
     m_out << "      <attributes>\n";
-    m_out << "        <divisions>" << 480 << "</divisions>\n";
+    m_out << "        <divisions>" << 240 << "</divisions>\n";
     writeKey();
     writeTime();
     writeClef(idx);
     m_out << "      </attributes>\n";
+}
+
+
+//---------------------------------------------------------
+// writeBackupForward - write backup or forward
+//---------------------------------------------------------
+
+void MxmlFile::writeBackupForward(const int duration, const int voice)
+{
+    if (duration < 0) {
+        m_out << "      <backup>\n";
+        m_out << "        <duration>" << (-duration) << "</duration>\n";
+        m_out << "      </backup>\n";
+    }
+    else if (duration > 0) {
+        m_out << "      <forward>\n";
+        m_out << "        <duration>" << duration << "</duration>\n";
+        m_out << "        <voice>" << (voice + 1) << "</voice>\n";
+        m_out << "      <forward>\n";
+    }
 }
 
 
@@ -511,33 +577,91 @@ void MxmlFile::writeKeyChange(const EncMeasureElemKeyChange* keyChange)
 }
 
 
-static void dump_note_timing_measure_elems(const EncMeasure& m)
+static bool isGrace(const EncMeasureElemNote* const note)
+{
+    return note->graceType() != graceType::NORMALNOTE;
+}
+
+// TODO: refactor
+static int durationNote(const EncMeasureElemNote* const note)
+{
+    int duration = faceValue2duration(note->m_faceValue & 0x0F);
+    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
+        duration *= 3;
+        duration /= 2;
+    }
+
+    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
+        duration *= note->normalNotes();
+        duration /= note->actualNotes();
+    }
+
+    if (isGrace(note)) {
+        return 0;
+    }
+
+    return duration;
+}
+
+
+// TODO refactor
+static int durationRest(const EncMeasureElemRest* const rest)
+{
+    int duration = faceValue2duration(rest->m_faceValue & 0x0F);
+    for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
+        duration *= 3;
+        duration /= 2;
+    }
+
+    if (rest->actualNotes() > 0 && rest->normalNotes() > 0) {
+        duration *= rest->normalNotes();
+        duration /= rest->actualNotes();
+    }
+
+    return duration;
+}
+
+
+static void dump_note_timing_measure_elem(const EncMeasureElem* const elem, const QString& id)
+{
+    if (const EncMeasureElemNote* const note = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
+        qDebug() << id
+                 << "staff" << note->m_staffIdx
+                 << "voice" << note->m_voice
+                 << "tick" << note->m_tick
+                 << "x_offset" << note->m_xoffset
+                 << "note"
+                 << "value" << (note->m_faceValue & 0x0F)
+                 << "dots" << (note->m_dotControl & 3)
+                 << "actual" << note->actualNotes()
+                 << "normal" << note->normalNotes()
+                 << "calcdur" << durationNote(note)
+                 << (isGrace(note) ? "grc" : "nrm")
+                 << ((note->m_grace1 & 0x30) >> 4)
+                 << (note->m_grace2 & 0x05)
+                 << "pbdur" << note->m_playbackDurTicks
+                 << "nexttick" << (note->m_tick + durationNote(note))
+                    ;
+    }
+    else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
+        qDebug() << id
+                 << "staff" << rest->m_staffIdx
+                 << "voice" << rest->m_voice
+                 << "tick" << rest->m_tick
+                 << "x_offset" << rest->m_xoffset
+                 << "rest"
+                 << "value" << (rest->m_faceValue & 0x0F)
+                 << "dots" << (rest->m_dotControl & 3)
+                 << "calcdur" << durationRest(rest)
+                 << "nexttick" << (rest->m_tick + durationRest(rest))
+                    ;
+    }
+}
+
+static void dump_note_timing_measure_elems(const EncMeasure& m, const QString& id)
 {
     for (const auto& elem : m.measureElems()) {
-        if (const EncMeasureElemNote* const note = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
-            qDebug() << "xxx_note_timing"
-                     << "staff" << note->m_staffIdx
-                     << "voice" << note->m_voice
-                     << "tick" << note->m_tick
-                     << "x_offset" << note->m_xoffset
-                     << "note"
-                     << "value" << (note->m_faceValue & 0x0F)
-                     << "dots" << (note->m_dotControl & 3)
-                     << "actual" << note->actualNotes()
-                     << "normal" << note->normalNotes()
-                        ;
-        }
-        else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-            qDebug() << "xxx_note_timing"
-                     << "staff" << rest->m_staffIdx
-                     << "voice" << rest->m_voice
-                     << "tick" << rest->m_tick
-                     << "x_offset" << rest->m_xoffset
-                     << "rest"
-                     << "value" << (rest->m_faceValue & 0x0F)
-                     << "dots" << (rest->m_dotControl & 3)
-                        ;
-        }
+        dump_note_timing_measure_elem(elem, id);
     }
 }
 
@@ -598,6 +722,19 @@ static void writeRepeatRight(QTextStream& out, const repeatType repeat)
 
 
 //---------------------------------------------------------
+// notesAreInChord - determine if note1 and note2 are in a chord together
+//---------------------------------------------------------
+
+static bool notesAreInChord(const EncMeasureElemNote* const note1,
+                            const EncMeasureElemNote* const note2)
+{
+    return note1 && note2
+            && note1->m_tick == note2->m_tick
+            && note1->m_xoffset == note2->m_xoffset;
+}
+
+
+//---------------------------------------------------------
 // writeMeasure - write a measure of a part
 // note: assumes only single staff parts
 //---------------------------------------------------------
@@ -616,7 +753,27 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
     qDebug() << "xxx_note_timing"
              << "measureNr" << measureNr
                 ;
-    dump_note_timing_measure_elems(m);
+    dump_note_timing_measure_elems(m, "xxx_note_timing");
+
+    std::set<quint8> voices;
+    for (const auto e : m.measureElems()) {
+        if (e->m_staffIdx == partNr)
+            voices.insert(e->m_voice);
+    }
+
+    qDebug() << "xxx_voice_timing"
+             << "measureNr" << measureNr
+                ;
+    for (const auto v : voices) {
+        qDebug() << "xxx_voice_timing"
+                 << "voice" << v
+                    ;
+        for (const auto& elem : m.measureElems()) {
+            if (elem->m_staffIdx == partNr && elem->m_voice == v) {
+                dump_note_timing_measure_elem(elem, "xxx_voice_timing");
+            }
+        }
+    }
 
     writeBarlineLeft(partNr, measureNr);
 
@@ -637,18 +794,67 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
     }
 
     TupletHandler th;
-    std::multimap<quint8 , const EncMeasureElem* const> mmap;
-    for (const auto e : m.measureElems()) {
-        if (e->m_staffIdx == partNr)
-            mmap.insert({e->m_xoffset, e});
-    }
-    for (const auto& e : mmap) {
-        const auto elem = e.second;
-        if (const EncMeasureElemNote* const note = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
-            writeNote(note, th);
+
+    // write notes and rests for all voices. As elem->m_tick sometimes differs slightly
+    // from the expected value, simply assume all voices start at tick = 0 and no gaps
+    // are present.
+
+    int tick = 0;
+    for (const auto v : voices) {
+        const EncMeasureElemNote* prevnote = nullptr;
+        if (tick > 0) {
+            // explicit backup to prevent error message at start of voice
+            writeBackupForward(-tick, 0);
+            tick = 0;
         }
-        else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-            writeRest(rest, th);
+        for (const auto& elem : m.measureElems()) {
+            if (elem->m_staffIdx == partNr && elem->m_voice == v) {
+                int duration = 0;
+                if (const EncMeasureElemNote* const note = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
+                    /*
+                    if (elem->m_tick != tick) {
+                        qDebug() << "xxx_voice_timing"
+                                 << "tick_delta"
+                                 << "measureNr" << measureNr
+                                 << "voice" << v
+                                 << "tick" << tick
+                                 << "elem->m_tick" << elem->m_tick
+                                    ;
+                        writeBackupForward(elem->m_tick - tick, v);
+                        tick = elem->m_tick;
+                    }
+                    */
+                    const bool isChord = notesAreInChord(prevnote, note);
+                    if (isChord) {
+                        qDebug() << "xxx_chord"
+                                 << "measureNr" << measureNr
+                                 << "voice" << v
+                                 << "elem->m_tick" << elem->m_tick
+                                    ;
+                    }
+                    writeNote(note, partNr, th, isChord);
+                    duration = isChord ? 0 : durationNote(note);
+                    prevnote = note;
+                }
+                else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
+                    /*
+                    if (elem->m_tick != tick) {
+                        qDebug() << "xxx_voice_timing"
+                                 << "measureNr" << measureNr
+                                 << "voice" << v
+                                 << "tick" << tick
+                                 << "elem->m_tick" << elem->m_tick
+                                    ;
+                        writeBackupForward(elem->m_tick - tick, v);
+                        tick = elem->m_tick;
+                    }
+                    */
+                    writeRest(rest, partNr, th);
+                    duration = durationRest(rest);
+                    prevnote = nullptr; // can't be part of chord
+                }
+                tick += duration;
+            }
         }
     }
 
@@ -667,7 +873,7 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
 // writeNote - write a note
 //---------------------------------------------------------
 
-void MxmlFile::writeNote(const EncMeasureElemNote* const note, TupletHandler& th)
+void MxmlFile::writeNote(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord)
 {
     char step = ' ';
     int alter = 0;
@@ -684,25 +890,37 @@ void MxmlFile::writeNote(const EncMeasureElemNote* const note, TupletHandler& th
     }
     midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), fifths, step, alter, octave);
     m_out << "      <note>\n";
+
+    if (note->graceType() == graceType::ACCIACCATURA) {
+        m_out << "        <grace slash=\"yes\"/>\n";
+    }
+    else if (note->graceType() == graceType::APPOGGIATURA) {
+        m_out << "        <grace/>\n";
+    }
+
+    if (chord) {
+        m_out << "        <chord/>\n";
+    }
+
     m_out << "        <pitch>\n";
     m_out << "          <step>" << step << "</step>\n";
-    if (alter) m_out << "          <alter>" << alter << "</alter>\n";
+    if (alter) {
+        m_out << "          <alter>" << alter << "</alter>\n";
+    }
     m_out << "          <octave>" << octave << "</octave>\n";
     m_out << "        </pitch>\n";
 
-    int duration = faceValue2duration(note->m_faceValue & 0x0F);
-    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
-        duration *= 3;
-        duration /= 2;
+    if (!isGrace(note)) {
+        m_out << "        <duration>" << durationNote(note) << "</duration>\n";
     }
-    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
-        duration *= note->normalNotes();
-        duration /= note->actualNotes();
+
+    if (hasMultipleVoices(partNr)) {
+        m_out << "        <voice>" << (note->m_voice + 1) << "</voice>\n";
     }
-    m_out << "        <duration>" << duration << "</duration>\n";
     m_out << "        <type>" << faceValue2xml(note->m_faceValue & 0x0F) << "</type>\n";
-    for (int i = 0; i < (note->m_dotControl & 3); ++i)
+    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
         m_out << "        <dot/>\n";
+    }
     if (note->actualNotes() > 0 && note->normalNotes() > 0) {
         m_out << "        <time-modification>\n";
         m_out << "          <actual-notes>" << note->actualNotes() << "</actual-notes>\n";
@@ -712,10 +930,12 @@ void MxmlFile::writeNote(const EncMeasureElemNote* const note, TupletHandler& th
     const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
     if (tupletState == TupletHandler::type::START || tupletState == TupletHandler::type::STOP) {
         m_out << "        <notations>\n";
-        if (tupletState == TupletHandler::type::START)
+        if (tupletState == TupletHandler::type::START) {
             m_out << "          <tuplet type=\"start\"/>\n";
-        if (tupletState == TupletHandler::type::STOP)
+        }
+        if (tupletState == TupletHandler::type::STOP) {
             m_out << "          <tuplet type=\"stop\"/>\n";
+        }
         m_out << "        </notations>\n";
     }
     m_out << "      </note>\n";
@@ -767,23 +987,18 @@ void MxmlFile::writeParts()
 // writeRest - write a rest
 //---------------------------------------------------------
 
-void MxmlFile::writeRest(const EncMeasureElemRest* const rest, TupletHandler &th)
+void MxmlFile::writeRest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th)
 {
     m_out << "      <note>\n";
     m_out << "        <rest/>\n";
-    int duration = faceValue2duration(rest->m_faceValue & 0x0F);
-    for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
-        duration *= 3;
-        duration /= 2;
+    m_out << "        <duration>" << durationRest(rest) << "</duration>\n";
+    if (hasMultipleVoices(partNr)) {
+        m_out << "        <voice>" << (rest->m_voice + 1) << "</voice>\n";
     }
-    if (rest->actualNotes() > 0 && rest->normalNotes() > 0) {
-        duration *= rest->normalNotes();
-        duration /= rest->actualNotes();
-    }
-    m_out << "        <duration>" << duration << "</duration>\n";
     m_out << "        <type>" << faceValue2xml(rest->m_faceValue & 0x0F) << "</type>\n";
-    for (int i = 0; i < (rest->m_dotControl & 3); ++i)
+    for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
         m_out << "        <dot/>\n";
+    }
     if (rest->actualNotes() > 0 && rest->normalNotes() > 0) {
         m_out << "        <time-modification>\n";
         m_out << "          <actual-notes>" << rest->actualNotes() << "</actual-notes>\n";
@@ -793,10 +1008,12 @@ void MxmlFile::writeRest(const EncMeasureElemRest* const rest, TupletHandler &th
     const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
     if (tupletState == TupletHandler::type::START || tupletState == TupletHandler::type::STOP) {
         m_out << "        <notations>\n";
-        if (tupletState == TupletHandler::type::START)
+        if (tupletState == TupletHandler::type::START) {
             m_out << "          <tuplet type=\"start\"/>\n";
-        if (tupletState == TupletHandler::type::STOP)
+        }
+        if (tupletState == TupletHandler::type::STOP) {
             m_out << "          <tuplet type=\"stop\"/>\n";
+        }
         m_out << "        </notations>\n";
     }
     m_out << "      </note>\n";

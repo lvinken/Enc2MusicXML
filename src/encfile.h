@@ -186,6 +186,17 @@ enum class elemType : quint8 {
 
 
 //---------------------------------------------------------
+// the types of grace notes
+//---------------------------------------------------------
+
+enum class graceType : quint8 {
+    NORMALNOTE = 0,
+    ACCIACCATURA,
+    APPOGGIATURA
+};
+
+
+//---------------------------------------------------------
 // base class of all musical elements contained in a measure
 //---------------------------------------------------------
 
@@ -263,8 +274,10 @@ public:
     bool read(QDataStream& data);
     int actualNotes() const { return m_tuplet >> 4; }
     int normalNotes() const { return m_tuplet & 0x0F; }
+    graceType graceType() const;
     quint8  m_faceValue         { 0 };  // offset  5 (WithDuration) atr.noto.rapido
-    quint8  m_grace             { 0 };  // offset  6                atr.noto.rap1
+    quint8  m_grace1            { 0 };  // offset  6                atr.noto.rap1
+    quint8  m_grace2            { 0 };  // offset  7                atr.noto.rap2
     qint8   m_position          { 0 };  // offset 12                atr.noto.vpoz
     quint8  m_tuplet            { 0 };  // offset 13 (WithDuration) atr.noto.opeco
     quint8  m_dotControl        { 0 };  // offset 14 (WithDuration) indikilo
