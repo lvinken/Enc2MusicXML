@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("Enc2MusicXML");
-    QCoreApplication::setApplicationVersion("0.3");
+    QCoreApplication::setApplicationVersion("0.4");
 
     QCommandLineParser clp;
     clp.setApplicationDescription("Enc2MusicXML converts Encore files to MusicXML.");

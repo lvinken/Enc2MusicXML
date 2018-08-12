@@ -725,7 +725,7 @@ void TextFile::writeHeader()
             << std::dec
             << "N sistemoj : " << std::setw(4) << hdr.m_lineCount << "\n"
             << "N paghoj   : " << std::setw(4) << hdr.m_pageCount << "\n"
-            << "N1 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_staffCount) << "\n"
+            << "N1 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_instrumentCount) << "\n"
             << "N2 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_staffPerSystem) << "\n"
             << "N mezuroj  : " << std::setw(4) << hdr.m_measureCount << "\n"
             << "\n";
@@ -872,6 +872,13 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
                 << " (vocho: " << static_cast<int>(note->m_voice) << ")"
                 << "\n";
     }
+    else if (const EncMeasureElemClef* const clef = dynamic_cast<const EncMeasureElemClef* const>(elem)) {
+        std::cout
+                << " "
+                << "Clef (TODO)"
+                << " (vocho: " << static_cast<int>(clef->m_voice) << ")"
+                << "\n";
+    }
     else if (const EncMeasureElemOrnament* const orna = dynamic_cast<const EncMeasureElemOrnament* const>(elem)) {
         std::cout
                 << " "
@@ -881,6 +888,13 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
                 << ";" << static_cast<int>(orna->m_xoffset2)
                 << "]"
                 << " (vocho: " << static_cast<int>(orna->m_voice) << ")"
+                << "\n";
+    }
+    else if (const EncMeasureElemLyric* const lyric = dynamic_cast<const EncMeasureElemLyric* const>(elem)) {
+        std::cout
+                << " "
+                << "Lyric (TODO)"
+                << " (vocho: " << static_cast<int>(lyric->m_voice) << ")"
                 << "\n";
     }
     else if (const EncMeasureElemTie* const tie = dynamic_cast<const EncMeasureElemTie* const>(elem)) {
@@ -925,6 +939,13 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
                 << enc_lily_tonalo(key->m_tipo)
                 << " [" << static_cast<int>(key->m_xoffset) << "]"
                 << " (vocho: " << static_cast<int>(key->m_voice) << ")"
+                << "\n";
+    }
+    else if (const EncMeasureElemUnknown* const unknown = dynamic_cast<const EncMeasureElemUnknown* const>(elem)) {
+        std::cout
+                << " "
+                << "Unknown (TODO)"
+                << " (vocho: " << static_cast<int>(unknown->m_voice) << ")"
                 << "\n";
     }
     else

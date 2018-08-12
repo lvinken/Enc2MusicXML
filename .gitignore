@@ -5,3 +5,5 @@ Enc2MusicXML
 Enc2MusicXML.pro.user
 *.o
 testdata/*.out
+testdata/*.out.txt
+testdata/*.out.xml

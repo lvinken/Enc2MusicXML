@@ -51,11 +51,11 @@ static bool readMagic(QDataStream& data, QString& magic)
 
 
 //---------------------------------------------------------
-// isEncStaffMagic - check if magic equals ("TK<number><number>")
-// (typically TK00) corresponding to a staff (or instrument ?) block
+// isEncInstrumentMagic - check if magic equals "TK<number><number>"
+// (typically TK00) corresponding to an instrument block
 //---------------------------------------------------------
 
-static bool isEncStaffMagic(const QString& magic)
+static bool isEncInstrumentMagic(const QString& magic)
 {
     if (magic.length() < 4)
         return false;
@@ -64,34 +64,6 @@ static bool isEncStaffMagic(const QString& magic)
         return true;
 
     return false;
-}
-
-
-//---------------------------------------------------------
-// findNextEncStaffMagic - find the start of the next staff
-// (or instrument ?) block
-// for some staff blocks varsize is incorrect (too small)
-//---------------------------------------------------------
-
-static bool findNextEncStaffMagic(QDataStream& data, QString& magic)
-{
-    for (int i = 0; i < 4 && !data.atEnd(); ++i) {
-        quint8 ch;
-        data >> ch;
-        magic.append(ch);
-    }
-
-    while (!isEncStaffMagic(magic) && !data.atEnd()) {
-        magic.remove(0, 1);
-        quint8 ch;
-        data >> ch;
-        magic.append(ch);
-    }
-
-    qDebug()
-            << "filepos" << hexString(data.device()->pos() - 4)
-            << "magic" << magic;
-    return true;
 }
 
 
@@ -105,7 +77,8 @@ static bool isKnownMagic(const QString& magic)
     if (magic.length() < 4)
         return false;
 
-    return  magic == "LINE" || magic == "MEAS" || magic == "TITL" || magic == "TEXT";
+    return  magic == "LINE" || magic == "MEAS" || magic == "TITL" || magic == "TEXT"
+            || isEncInstrumentMagic(magic);
 }
 
 
@@ -155,7 +128,13 @@ bool EncHeader::read(QDataStream& data)
 {
     readMagic(data, m_magic);
     qDebug() << "m_magic" << m_magic;
-    if (m_magic != "SCOW") {
+    if (m_magic == "SCOW") {
+        data.setByteOrder(QDataStream::LittleEndian);
+    }
+    else if (m_magic == "SCO5") {
+        data.setByteOrder(QDataStream::BigEndian);
+    }
+    else {
         qDebug() << "m_magic" << m_magic << "is incorrect";
         m_magic = "";
         return false;
@@ -167,7 +146,7 @@ bool EncHeader::read(QDataStream& data)
     data >> m_fiksa1;
     data >> m_lineCount;
     data >> m_pageCount;
-    data >> m_staffCount;
+    data >> m_instrumentCount;
     data >> m_staffPerSystem;
     data >> m_measureCount;
     data.skipRawData(0xC2 - 0x36);  // skip to end
@@ -185,7 +164,7 @@ QDebug operator<<(QDebug dbg, const EncHeader& header)
             << "m_fiksa1" << header.m_fiksa1
             << "m_lineCount" << header.m_lineCount
             << "m_pageCount" << header.m_pageCount
-            << "m_staffCount" << header.m_staffCount
+            << "m_instrumentCount" << header.m_instrumentCount
             << "m_staffPerSystem" << header.m_staffPerSystem
             << "m_measureCount" << header.m_measureCount
                ;
@@ -193,23 +172,21 @@ QDebug operator<<(QDebug dbg, const EncHeader& header)
 }
 
 //---------------------------------------------------------
-// EncStaff
+// EncInstrument
 //---------------------------------------------------------
 
-EncStaff::EncStaff()
+EncInstrument::EncInstrument()
 {
 
 }
 
 
-bool EncStaff::read(QDataStream& data)
+bool EncInstrument::read(QDataStream& data, const quint32 var_size)
 {
-    qDebug() << "EncStaff::read()";
-    findNextEncStaffMagic(data, m_id);
-    data >> m_offset;
+    qDebug() << "EncInstrument::read()";
+    m_offset = var_size;
     m_offset &= 0xFFFF; // TODO: ritmo.enc fails when m_offset is assumed to be 32 bit
     qDebug()
-            << "m_id" << m_id
             << "m_offset" << m_offset
             << "charSize" << static_cast<int>(charSize())
                ;
@@ -238,7 +215,7 @@ bool EncStaff::read(QDataStream& data)
         else
             m_name.append(ch);
     }
-    qDebug() << m_name;
+    qDebug() << "m_name" << m_name;
     data.skipRawData(m_offset - nread);
     return true;
 }
@@ -246,13 +223,13 @@ bool EncStaff::read(QDataStream& data)
 
 // determine if one or two byte characters are used
 
-CharSize EncStaff::charSize() const
+CharSize EncInstrument::charSize() const
 {
     return (m_offset > 250) ? CharSize::TWO_BYTES : CharSize::ONE_BYTE;
 }
 
 
-QDebug operator<<(QDebug dbg, const EncStaff& /* staff */)
+QDebug operator<<(QDebug dbg, const EncInstrument& /* instrument */)
 {
     // TODO
 
@@ -305,14 +282,14 @@ bool EncLineStaffData::read(QDataStream& data)
     quint8 st;
     data >> st;
     m_staffType = static_cast<staffType>(st);
-    data >> m_staffIdx;
+    data >> m_instrStaffIdx;
     data.skipRawData(8);      // skip to end
     qDebug()
             << "m_clef" << static_cast<int>(m_clef)
             << "m_key" << m_key
             << "m_pageIdx" << m_pageIdx
             << "m_staffType" << static_cast<unsigned int>(m_staffType)
-            << "m_staffIdx" << m_staffIdx
+            << "m_instrStaffIdx" << m_instrStaffIdx
                ;
     return true;
 }
@@ -414,6 +391,8 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
         EncMeasureElem* elem = nullptr;
         if (elemType(type) == elemType::NONE) {
             elem = new EncMeasureElemNone(tick, type, voice);
+        } else if (elemType(type) == elemType::CLEF) {
+            elem = new EncMeasureElemClef(tick, type, voice);
         } else if (elemType(type) == elemType::KEYCHANGE) {
             elem = new EncMeasureElemKeyChange(tick, type, voice);
         } else if (elemType(type) == elemType::TIE) {
@@ -422,12 +401,18 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
             elem = new EncMeasureElemBeam(tick, type, voice);
         } else if (elemType(type) == elemType::ORNAMENT) {
             elem = new EncMeasureElemOrnament(tick, type, voice);
+        } else if (elemType(type) == elemType::LYRIC) {
+            elem = new EncMeasureElemLyric(tick, type, voice);
         } else if (elemType(type) == elemType::CHORD) {
             elem = new EncMeasureElemChord(tick, type, voice);
         } else if (elemType(type) == elemType::REST) {
             elem = new EncMeasureElemRest(tick, type, voice);
         } else if (elemType(type) == elemType::NOTE) {
             elem = new EncMeasureElemNote(tick, type, voice);
+        } else if (elemType(type) == elemType::UNKNOWN1) {
+            elem = new EncMeasureElemUnknown(tick, type, voice);
+        } else if (elemType(type) == elemType::UNKNOWN2) {
+            elem = new EncMeasureElemUnknown(tick, type, voice);
         } else {
             qDebug()
                     << "filepos" << hexString(data.device()->pos() - 1)
@@ -491,6 +476,25 @@ EncMeasureElemNone::EncMeasureElemNone(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemNone::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemNone::read()";
+    EncMeasureElem::read(data);
+    data.skipRawData(m_size - 5);     // skip to end
+    return true;
+}
+
+//---------------------------------------------------------
+// EncMeasureElemClef
+//---------------------------------------------------------
+
+EncMeasureElemClef::EncMeasureElemClef(quint16 tick, quint8  type, quint8 voice)
+    : EncMeasureElem(tick, type, voice)
+{
+
+}
+
+
+bool EncMeasureElemClef::read(QDataStream& data)
+{
+    qDebug() << "EncMeasureElemClef::read()";
     EncMeasureElem::read(data);
     data.skipRawData(m_size - 5);     // skip to end
     return true;
@@ -601,6 +605,25 @@ bool EncMeasureElemOrnament::read(QDataStream& data)
             << "m_xoffset2" << m_xoffset2
             << "m_speguleco" << m_speguleco
                ;
+    return true;
+}
+
+//---------------------------------------------------------
+// EncMeasureElemLyric
+//---------------------------------------------------------
+
+EncMeasureElemLyric::EncMeasureElemLyric(quint16 tick, quint8  type, quint8 voice)
+    : EncMeasureElem(tick, type, voice)
+{
+
+}
+
+
+bool EncMeasureElemLyric::read(QDataStream& data)
+{
+    qDebug() << "EncMeasureElemLyric::read()";
+    EncMeasureElem::read(data);
+    data.skipRawData(m_size - 5);     // skip to end
     return true;
 }
 
@@ -760,6 +783,25 @@ bool EncMeasureElemRest::read(QDataStream& data)
             << "m_tuplet" << m_tuplet
             << "m_dotControl" << m_dotControl
                ;
+    return true;
+}
+
+//---------------------------------------------------------
+// EncMeasureElemUnknown
+//---------------------------------------------------------
+
+EncMeasureElemUnknown::EncMeasureElemUnknown(quint16 tick, quint8  type, quint8 voice)
+    : EncMeasureElem(tick, type, voice)
+{
+
+}
+
+
+bool EncMeasureElemUnknown::read(QDataStream& data)
+{
+    qDebug() << "EncMeasureElemUnknown::read()";
+    EncMeasureElem::read(data);
+    data.skipRawData(m_size - 5);     // skip to end
     return true;
 }
 
@@ -933,6 +975,42 @@ static void addSpannerEnds(MeasureVec& mv)
     }
 }
 
+
+//---------------------------------------------------------
+// fixupInstruments - create instrument descriptions if not found
+// which occurs when files do not contain TKxx blocks
+//---------------------------------------------------------
+
+static void fixupInstruments(std::vector<EncInstrument>& instruments, const int count)
+{
+    if (instruments.size() == 0) {
+        for (int i = 0; i < count; ++i) {
+            EncInstrument instrument;
+            instrument.m_name = QString("Part %1").arg(i + 1);
+            instruments.push_back(instrument);
+        }
+    }
+}
+
+
+//---------------------------------------------------------
+// countStaves - count the number of staves for each instrument
+//---------------------------------------------------------
+
+static void countStaves(std::vector<EncInstrument>& instruments, const std::vector<EncLineStaffData>& lineStaffData)
+{
+    for (unsigned int i = 0; i < instruments.size(); ++i) {
+        int staves = 0;
+        for (const auto& staff : lineStaffData) {
+            if ((staff.instrumentIndex()) == i) {
+                ++staves;
+            }
+        }
+        instruments[i].m_nstaves = staves;
+    }
+}
+
+
 //---------------------------------------------------------
 // EncFile
 //---------------------------------------------------------
@@ -945,16 +1023,9 @@ EncFile::EncFile()
 
 bool EncFile::read(QDataStream& data)
 {
-    data.setByteOrder(QDataStream::LittleEndian);
     m_header.read(data);
     qDebug() << "header" << m_header;
     CharSize charsize = CharSize::ONE_BYTE;
-    for (int i = 0; i < m_header.m_staffCount; ++i) {
-        EncStaff staff;
-        staff.read(data);
-        m_staves.push_back(staff);
-        charsize = staff.charSize();
-    }
 
     while (!data.atEnd()) {
         auto next_id = findNextKnownMagic(data);
@@ -977,10 +1048,18 @@ bool EncFile::read(QDataStream& data)
         else if (next_id == "TITL") {
             m_title.read(data, var_size, charsize);
         }
+        else if (isEncInstrumentMagic(next_id)) {
+            EncInstrument instrument;
+            instrument.read(data, var_size);
+            m_instruments.push_back(instrument);
+            charsize = instrument.charSize();
+        }
         else
             data.skipRawData(var_size);
     }
 
+    fixupInstruments(m_instruments, m_header.m_instrumentCount);
+    countStaves(m_instruments, m_lines.at(0).lineStaffData());
     addSpannerEnds(m_measures);
 
     return true;

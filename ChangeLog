@@ -1,3 +1,11 @@
+Version 0.4 (2018-08-12)
+
+- support multi-staff parts
+- handle files without TKxx blocks
+- ignore measure elements type lyric and unknown type 10 and 11
+- support SCO5 files
+- support SCOW files without TKxx blocks
+
 Version 0.3 (2018-08-02)
 
 - support grace notes

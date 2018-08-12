@@ -282,13 +282,17 @@ void MxmlFile::write()
 // writeAttributes - write the attributes
 //---------------------------------------------------------
 
-void MxmlFile::writeAttributes(const int idx)
+void MxmlFile::writeAttributes(const int partNr)
 {
     m_out << "      <attributes>\n";
     m_out << "        <divisions>" << 240 << "</divisions>\n";
     writeKey();
     writeTime();
-    writeClef(idx);
+    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    if (nstaves > 1) {
+        m_out << "        <staves>" << nstaves << "</staves>\n";
+    }
+    writeClefs(partNr);
     m_out << "      </attributes>\n";
 }
 
@@ -440,25 +444,33 @@ void MxmlFile::writeBarlineRight(const int partNr, const size_t measureNr)
 // writeClef - write the clef for staff idx
 //---------------------------------------------------------
 
-void MxmlFile::writeClef(const int idx)
+void MxmlFile::writeClefs(const int partNr)
 {
     // TBD (too) simple implementation: use clef of first measure only
     const bool hasMeasures = m_ef.measures().size() > 0;
     if (hasMeasures) {
+        const int nstaves = m_ef.staves().at(partNr).m_nstaves;
         const auto& encline = m_ef.lines().at(0);   // first system
-        const auto& data = encline.lineStaffData().at(idx);
-        const auto ct = data.m_clef;
-        QString sign;
-        int line { 0 };
-        int octCh { 0 };
-        if (encClef2xml(ct, sign, line, octCh)) {
-            m_out << "        <clef>\n";
-            m_out << QString("          <sign>%1</sign>\n").arg(sign);
-            m_out << QString("          <line>%1</line>\n").arg(line);
-            if (octCh) {
-                m_out << QString("          <clef-octave-change>%1</clef-octave-change>\n").arg(octCh);
+        for (int i = 0; i < nstaves; ++i) {
+            const auto& data = encline.lineStaffData().at(partNr + i);
+            const auto ct = data.m_clef;
+            QString sign;
+            int line { 0 };
+            int octCh { 0 };
+            if (encClef2xml(ct, sign, line, octCh)) {
+                if (nstaves > 1) {
+                    m_out << QString("        <clef number=\"%1\">\n").arg(i + 1);
+                }
+                else {
+                    m_out << "        <clef>\n";
+                }
+                m_out << QString("          <sign>%1</sign>\n").arg(sign);
+                m_out << QString("          <line>%1</line>\n").arg(line);
+                if (octCh) {
+                    m_out << QString("          <clef-octave-change>%1</clef-octave-change>\n").arg(octCh);
+                }
+                m_out << "        </clef>\n";
             }
-            m_out << "        </clef>\n";
         }
     }
 }
@@ -927,6 +939,15 @@ void MxmlFile::writeNote(const EncMeasureElemNote* const note, const int partNr,
         m_out << "          <normal-notes>" << note->normalNotes() << "</normal-notes>\n";
         m_out << "        </time-modification>\n";
     }
+    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    if (nstaves > 1) {
+        if (note->m_voice < 4) {
+            m_out << "        <staff>1</staff>\n";
+        }
+        else {
+            m_out << "        <staff>2</staff>\n";
+        }
+    }
     const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
     if (tupletState == TupletHandler::type::START || tupletState == TupletHandler::type::STOP) {
         m_out << "        <notations>\n";
@@ -1005,6 +1026,15 @@ void MxmlFile::writeRest(const EncMeasureElemRest* const rest, const int partNr,
         m_out << "          <normal-notes>" << rest->normalNotes() << "</normal-notes>\n";
         m_out << "        </time-modification>\n";
     }
+    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    if (nstaves > 1) {
+        if (rest->m_voice < 4) {
+            m_out << "        <staff>1</staff>\n";
+        }
+        else {
+            m_out << "        <staff>2</staff>\n";
+        }
+    }
     const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
     if (tupletState == TupletHandler::type::START || tupletState == TupletHandler::type::STOP) {
         m_out << "        <notations>\n";
@@ -1024,10 +1054,10 @@ void MxmlFile::writeRest(const EncMeasureElemRest* const rest, const int partNr,
 // writeScorePart - write score part n
 //---------------------------------------------------------
 
-void MxmlFile::writeScorePart(const int n, const EncStaff& staff)
+void MxmlFile::writeScorePart(const int n, const EncInstrument &instr)
 {
     m_out << "    <score-part id=\"P" << n << "\">\n";
-    m_out << "      <part-name>" << staff.m_name << "</part-name>\n";
+    m_out << "      <part-name>" << instr.m_name << "</part-name>\n";
     m_out << "    </score-part>\n";
 }
 

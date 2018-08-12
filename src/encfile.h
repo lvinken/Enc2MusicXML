@@ -63,7 +63,7 @@ public:
     quint16 m_fiksa1            { 0 };   // ENCORE_STRUKTURO::fiksa1
     qint16  m_lineCount         { 0 };   // ENCORE_STRUKTURO::nsis
     qint16  m_pageCount         { 0 };   // ENCORE_STRUKTURO::npag
-    qint8   m_staffCount        { 0 };   // ENCORE_STRUKTURO::nlnar1
+    qint8   m_instrumentCount   { 0 };   // ENCORE_STRUKTURO::nlnar1
     qint8   m_staffPerSystem    { 0 };   // ENCORE_STRUKTURO::nlnar2
     qint16  m_measureCount      { 0 };   // ENCORE_STRUKTURO::nmez
 };
@@ -72,21 +72,22 @@ QDebug operator<<(QDebug dbg, const EncHeader& header);
 
 
 //---------------------------------------------------------
-// a staff (or instrument ?) ("TK<number><number>") block (typically TK00)
+// an instrument (part ?) ("TK<number><number>") block (typically TK00)
 //---------------------------------------------------------
 
-class EncStaff                          // instrumento
+class EncInstrument                     // instrumento
 {
 public:
-    EncStaff();
-    bool read(QDataStream& data);
+    EncInstrument();
+    bool read(QDataStream& data, const quint32 var_size);
     QString m_id;
     quint32 m_offset            { 0 };
     QString m_name;
-    CharSize charSize() const;  // chu_utf8
+    CharSize charSize() const;          // chu_utf8
+    int m_nstaves               { 0 };
 };
 
-QDebug operator<<(QDebug dbg, const EncStaff& staff);
+QDebug operator<<(QDebug dbg, const EncInstrument& instr);
 
 
 //---------------------------------------------------------
@@ -140,11 +141,13 @@ class EncLineStaffData                  // Encore_Liniaro
 public:
     EncLineStaffData();
     bool read(QDataStream& data);
+    unsigned int instrumentIndex() const { return m_instrStaffIdx & 0x3F; }
+    unsigned int staffIndex() const { return m_instrStaffIdx >> 6; }
     clefType  m_clef            { clefType::G };        // clef
     quint8  m_key               { 0 };                  // tonalo
     quint8  m_pageIdx           { 0 };
     staffType  m_staffType      { staffType::MELODY };  // tipo
-    quint8  m_staffIdx          { 0 };
+    quint8  m_instrStaffIdx     { 0 };
 };
 
 
@@ -181,7 +184,9 @@ enum class elemType : quint8 {
     LYRIC,      // OT_KANTO
     CHORD,      // OT_AKORDO
     REST,       // OT_PAUZO
-    NOTE        // OT_NOTO
+    NOTE,       // OT_NOTO
+    UNKNOWN1,
+    UNKNOWN2
 };
 
 
@@ -226,6 +231,14 @@ public:
 };
 
 
+class EncMeasureElemClef : public EncMeasureElem
+{
+public:
+    EncMeasureElemClef(quint16 tick, quint8  type, quint8 voice);
+    bool read(QDataStream& data);
+};
+
+
 class EncMeasureElemKeyChange : public EncMeasureElem
 {
 public:
@@ -264,6 +277,14 @@ public:
     quint8  m_noto              { 0 };  // offset 28
     quint8  m_tempo             { 0 };  // offset 30
     quint8  m_tindo             { 0 };  // offset 32
+};
+
+
+class EncMeasureElemLyric : public EncMeasureElem
+{
+public:
+    EncMeasureElemLyric(quint16 tick, quint8  type, quint8 voice);
+    bool read(QDataStream& data);
 };
 
 
@@ -314,6 +335,14 @@ public:
     quint8  m_faceValue         { 0 };  // offset  5 (WithDuration) atr.pauzo.rapido
     quint8  m_tuplet            { 0 };  // offset 13 (WithDuration) atr.pauzo.opeco
     quint8  m_dotControl        { 0 };  // offset 14 (WithDuration) indikilo
+};
+
+
+class EncMeasureElemUnknown : public EncMeasureElem
+{
+public:
+    EncMeasureElemUnknown(quint16 tick, quint8  type, quint8 voice);
+    bool read(QDataStream& data);
 };
 
 
@@ -418,14 +447,14 @@ public:
     EncFile();
     bool read(QDataStream& data);
     const EncHeader& header() const { return m_header; }
-    const std::vector<EncStaff>& staves() const { return m_staves; }
+    const std::vector<EncInstrument>& staves() const { return m_instruments; }
     const std::vector<EncLine>& lines() const { return m_lines; }
     const MeasureVec& measures() const { return m_measures; }
     const EncText& text() const { return m_text; }
     const EncTitle& title() const { return m_title; }
 private:
     EncHeader m_header;
-    std::vector<EncStaff> m_staves;     // Encore_Strukturo.instrumentoj
+    std::vector<EncInstrument> m_instruments;   // Encore_Strukturo.instrumentoj
     std::vector<EncLine> m_lines;
     MeasureVec m_measures;
     EncText m_text;

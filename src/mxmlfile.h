@@ -51,11 +51,11 @@ public:
     MxmlFile(const EncFile& ef);
     bool hasMultipleVoices(const int partNr) const { return m_voicesPerPart.at(partNr) > 1; }
     void write();
-    void writeAttributes(const int idx);
+    void writeAttributes(const int partNr);
     void writeBackupForward(const int duration, const int voice);
     void writeBarlineLeft(const int partNr, const size_t measureNr);
     void writeBarlineRight(const int partNr, const size_t measureNr);
-    void writeClef(const int idx);
+    void writeClefs(const int partNr);
     void writeIdentification();
     void writeKey();
     void writeKeyChange(const EncMeasureElemKeyChange* keyChange);
@@ -65,7 +65,7 @@ public:
     void writePartList();
     void writeParts();
     void writeRest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th);
-    void writeScorePart(const int n, const EncStaff& staff);
+    void writeScorePart(const int n, const EncInstrument& instr);
     void writeTime();
     void writeWork();
 private:
