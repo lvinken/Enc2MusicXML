@@ -738,20 +738,20 @@ bool EncMeasureElemNote::read(QDataStream& data)
 }
 
 
-graceType EncMeasureElemNote::graceType() const
+GraceType EncMeasureElemNote::graceType() const
 {
     quint8 grace1 = m_grace1 & 0x30;
     quint8 grace2 = m_grace2 & 0x05;
 
     // algorithm copied from enc2ly
     if (grace1 == 0x20 && grace2 == 0x04) {
-        return graceType::ACCIACCATURA;
+        return GraceType::ACCIACCATURA;
     }
     else if (grace1 > 0x10 && grace2 != 0x01) {
-        return graceType::APPOGGIATURA;
+        return GraceType::APPOGGIATURA;
     }
 
-    return graceType::NORMALNOTE;
+    return GraceType::NORMALNOTE;
 }
 
 

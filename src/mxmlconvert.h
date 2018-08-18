@@ -17,9 +17,11 @@
 /*  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.           */
 /*****************************************************************************/
 
-#ifndef MXMLFILE_H
-#define MXMLFILE_H
+#ifndef MXMLCONVERT_H
+#define MXMLCONVERT_H
 
+#include "commondefs.h"
+#include "mxmlwriter.h"
 
 //---------------------------------------------------------
 // the tuplet state handler deduces tuplet start and stop notes
@@ -27,14 +29,8 @@
 
 class TupletHandler {
 public:
-    enum class type : quint8 {
-        NONE = 0,
-        START,
-        MID,
-        STOP
-    };
     TupletHandler() {}
-    TupletHandler::type newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue);
+    TupletState newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue);
 private:
     int m_count { 0 };
     int m_value { 0 };
@@ -42,37 +38,38 @@ private:
 
 
 //---------------------------------------------------------
-// the MusicXML file writer
+// the MusicXML converter class converts data representing an Encore file
+// into MusicXML elements and attributes and writes it to standard output
 //---------------------------------------------------------
 
-class MxmlFile
+class MxmlConverter
 {
 public:
-    MxmlFile(const EncFile& ef);
+    MxmlConverter(const EncFile& ef);
     bool hasMultipleVoices(const int partNr) const { return m_voicesPerPart.at(partNr) > 1; }
-    void write();
-    void writeAttributes(const int partNr);
-    void writeBackupForward(const int duration, const int voice);
-    void writeBarlineLeft(const int partNr, const size_t measureNr);
-    void writeBarlineRight(const int partNr, const size_t measureNr);
-    void writeClefs(const int partNr);
-    void writeIdentification();
-    void writeKey();
-    void writeKeyChange(const EncMeasureElemKeyChange* keyChange);
-    void writeMeasure(const int partNr, const size_t measureNr);
-    void writeNote(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord);
-    void writePart(const int n);
-    void writePartList();
-    void writeParts();
-    void writeRest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th);
-    void writeScorePart(const int n, const EncInstrument& instr);
-    void writeTime();
-    void writeWork();
+    void convertEncToMxml();
+    void attributes(const int partNr);
+    void barlineLeft(const int partNr, const size_t measureNr);
+    void barlineRight(const int partNr, const size_t measureNr);
+    void clefs(const int partNr);
+    void identification();
+    void key();
+    void keyChange(const EncMeasureElemKeyChange* keyCh);
+    void measure(const int partNr, const size_t measureNr);
+    void note(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord);
+    void part(const int n);
+    void partList();
+    void parts();
+    void repeatLeft(const repeatType repeat);
+    void rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th);
+    void scorePart(const int n, const EncInstrument& instr);
+    void time();
+    void work();
 private:
     void initVoicesPerPart();
     const EncFile& m_ef;
-    QTextStream m_out;
+    MxmlWriter m_writer;
     std::vector<std::size_t> m_voicesPerPart;
 };
 
-#endif // MXMLFILE_H
+#endif // MXMLCONVERT_H

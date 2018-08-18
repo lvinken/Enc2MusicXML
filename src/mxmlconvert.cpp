@@ -23,7 +23,7 @@
 #include <QtDebug>
 
 #include "encfile.h"
-#include "mxmlfile.h"
+#include "mxmlconvert.h"
 
 
 //---------------------------------------------------------
@@ -72,6 +72,11 @@ static QString faceValue2xml(const quint8 faceValue)
     }
     return "???";
 }
+
+
+//---------------------------------------------------------
+// encClef2xml - convert Encore to MusicXML clef type
+//---------------------------------------------------------
 
 static bool encClef2xml(const clefType ct, QString& sign, int& line, int& octCh)
 {
@@ -156,9 +161,9 @@ static void midipitch2xml(const quint8 pitch, const accidentalType accid, const 
 // TupletHandler - handle tuplet state
 //---------------------------------------------------------
 
-TupletHandler::type TupletHandler::newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue)
+TupletState TupletHandler::newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue)
 {
-    TupletHandler::type res { TupletHandler::type::NONE };
+    TupletState res { TupletState::NONE };
     char const * printableRes { nullptr };
     if (actualNotes <= 0 || normalNotes <= 0) {
         printableRes = "none";
@@ -167,7 +172,7 @@ TupletHandler::type TupletHandler::newNote(const quint8 actualNotes, const quint
     else {
         if (m_count == 0) {
             printableRes = "start";
-            res = TupletHandler::type::START;
+            res = TupletState::START;
             ++m_count;
             m_value = faceValue;
         }
@@ -185,11 +190,11 @@ TupletHandler::type TupletHandler::newNote(const quint8 actualNotes, const quint
             m_count += count;
             if (m_count >= actualNotes) {
                 printableRes = "stop";
-                res = TupletHandler::type::STOP;
+                res = TupletState::STOP;
                 m_count = 0;
             }
             else {
-                res = TupletHandler::type::MID;
+                res = TupletState::MID;
             }
         }
     }
@@ -228,7 +233,7 @@ static int nrOfVoicesInPart(const EncFile& ef, const int firstStaff, const int n
 // initVoicesPerPart - count the voices in all parts
 //---------------------------------------------------------
 
-void MxmlFile::initVoicesPerPart()
+void MxmlConverter::initVoicesPerPart()
 {
     int count = 0;
     for (size_t i = 0; i < m_ef.staves().size(); ++i) {
@@ -245,10 +250,10 @@ void MxmlFile::initVoicesPerPart()
 
 
 //---------------------------------------------------------
-// MxmlFile - MusicXML file writer constructor
+// MxmlFile - MusicXML converter constructor
 //---------------------------------------------------------
 
-MxmlFile::MxmlFile(const EncFile& ef)
+MxmlConverter::MxmlConverter(const EncFile& ef)
     : m_ef(ef)
 {
     initVoicesPerPart();
@@ -256,64 +261,38 @@ MxmlFile::MxmlFile(const EncFile& ef)
 
 
 //---------------------------------------------------------
-// write - write the MusicXML file
+// convertEncToMxml - convert Encore to MusicXML
 //---------------------------------------------------------
 
-void MxmlFile::write()
+void MxmlConverter::convertEncToMxml()
 {
-    qDebug() << "MxmlFile::write()";
+    qDebug() << "MxmlConverter::convertEncToMxml()";
     QFile outFile;
     outFile.open(stdout, QFile::WriteOnly);
-    m_out.setDevice(&outFile);
-    m_out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-          << "<!DOCTYPE score-partwise PUBLIC"
-          << " \"-//Recordare//DTD MusicXML 3.1 Partwise//EN\""
-          << " \"http://www.musicxml.org/dtds/partwise.dtd\">\n";
-    m_out << "<score-partwise>\n";
-    writeWork();
-    writeIdentification();
-    writePartList();
-    writeParts();
-    m_out << "</score-partwise>\n";
+    m_writer.setDevice(&outFile);
+    m_writer.writeXmlHeader();
+    m_writer.writeElementStart("", "score-partwise");
+    work();
+    identification();
+    partList();
+    parts();
+    m_writer.writeElementEnd("", "score-partwise");
 }
 
 
 //---------------------------------------------------------
-// writeAttributes - write the attributes
+// attributes - write the attributes
 //---------------------------------------------------------
 
-void MxmlFile::writeAttributes(const int partNr)
+void MxmlConverter::attributes(const int partNr)
 {
-    m_out << "      <attributes>\n";
-    m_out << "        <divisions>" << 240 << "</divisions>\n";
-    writeKey();
-    writeTime();
-    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
-    if (nstaves > 1) {
-        m_out << "        <staves>" << nstaves << "</staves>\n";
-    }
-    writeClefs(partNr);
-    m_out << "      </attributes>\n";
-}
-
-
-//---------------------------------------------------------
-// writeBackupForward - write backup or forward
-//---------------------------------------------------------
-
-void MxmlFile::writeBackupForward(const int duration, const int voice)
-{
-    if (duration < 0) {
-        m_out << "      <backup>\n";
-        m_out << "        <duration>" << (-duration) << "</duration>\n";
-        m_out << "      </backup>\n";
-    }
-    else if (duration > 0) {
-        m_out << "      <forward>\n";
-        m_out << "        <duration>" << duration << "</duration>\n";
-        m_out << "        <voice>" << (voice + 1) << "</voice>\n";
-        m_out << "      <forward>\n";
-    }
+    m_writer.writeElementStart("      ", "attributes");
+    m_writer.writeDivisions(240);
+    key();
+    time();
+    m_writer.writeStaves(m_ef.staves().at(partNr).m_nstaves);
+    clefs(partNr);
+    m_writer.writeElementEnd("      ", "attributes");
 }
 
 
@@ -381,38 +360,27 @@ static QString repeatAlternative2EndingNumber(const quint8 repeatAlternative)
 
 
 //---------------------------------------------------------
-// writeBarlineLeft - write left barline
+// barlineLeft - write left barline
 //---------------------------------------------------------
 
-void MxmlFile::writeBarlineLeft(const int partNr, const size_t measureNr)
+void MxmlConverter::barlineLeft(const int partNr, const size_t measureNr)
 {
     const auto& m = m_ef.measures().at(measureNr);
 
     const bool repeatStart = (m.barTypeStart() == barlineType::REPEATSTART);
     const bool barlineDblLeft = (m.barTypeStart() == barlineType::DOUBLEL);
     const bool endingStart = isFirstMeasureInAltEnd(m_ef.measures(), measureNr) && partNr == 0;
-    if (repeatStart || endingStart || barlineDblLeft) {
-        m_out << "      <barline location=\"left\">\n";
-        if (repeatStart) {
-            m_out << "        <bar-style>heavy-light</bar-style>\n";
-            m_out << "        <repeat direction=\"forward\"/>\n";
-        }
-        if (barlineDblLeft) {
-            m_out << "          <bar-style>light-light</bar-style>\n";
-        }
-        if (endingStart) {
-            m_out << "        <ending number=\"" << repeatAlternative2EndingNumber(m.m_repeatAlternative) << "\" type=\"start\"/>\n";
-        }
-        m_out << "      </barline>\n";
-    }
+    const QString endingNumber = repeatAlternative2EndingNumber(m.m_repeatAlternative);
+
+    m_writer.writeBarlineLeft(repeatStart, endingStart, barlineDblLeft, endingNumber);
 }
 
 
 //---------------------------------------------------------
-// writeBarlineRight - write right barline
+// barlineRight - write right barline
 //---------------------------------------------------------
 
-void MxmlFile::writeBarlineRight(const int partNr, const size_t measureNr)
+void MxmlConverter::barlineRight(const int partNr, const size_t measureNr)
 {
     const auto& m = m_ef.measures().at(measureNr);
 
@@ -420,31 +388,16 @@ void MxmlFile::writeBarlineRight(const int partNr, const size_t measureNr)
     const bool barlineEnd = (m.barTypeEnd() == barlineType::FINAL);
     const bool barlineDbl = (m.barTypeEnd() == barlineType::DOUBLER);
     const bool endingStop = isLastMeasureInAltEnd(m_ef.measures(), measureNr) && partNr == 0;
-    if (repeatEnd || endingStop || barlineEnd || barlineDbl) {
-        m_out << "      <barline location=\"right\">\n";
-        if (repeatEnd || barlineEnd) {
-            m_out << "        <bar-style>light-heavy</bar-style>\n";
-        }
-        if (barlineDbl) {
-            m_out << "        <bar-style>light-light</bar-style>\n";
-        }
-        if (endingStop) {
-            QString type = m.m_repeatAlternative == 1 ? "stop" : "discontinue";
-            m_out << "        <ending number=\"" << m.m_repeatAlternative << "\" type=\"" << type << "\"/>\n";
-        }
-        if (repeatEnd || m.m_repeatAlternative == 1) {
-            m_out << "        <repeat direction=\"backward\"/>\n";
-        }
-        m_out << "      </barline>\n";
-    }
+
+    m_writer.writeBarlineRight(repeatEnd, endingStop, barlineEnd, barlineDbl, m.m_repeatAlternative);
 }
 
 
 //---------------------------------------------------------
-// writeClef - write the clef for staff idx
+// clefs - write the clef(s) for part partNr
 //---------------------------------------------------------
 
-void MxmlFile::writeClefs(const int partNr)
+void MxmlConverter::clefs(const int partNr)
 {
     // TBD (too) simple implementation: use clef of first measure only
     const bool hasMeasures = m_ef.measures().size() > 0;
@@ -458,18 +411,7 @@ void MxmlFile::writeClefs(const int partNr)
             int line { 0 };
             int octCh { 0 };
             if (encClef2xml(ct, sign, line, octCh)) {
-                if (nstaves > 1) {
-                    m_out << QString("        <clef number=\"%1\">\n").arg(i + 1);
-                }
-                else {
-                    m_out << "        <clef>\n";
-                }
-                m_out << QString("          <sign>%1</sign>\n").arg(sign);
-                m_out << QString("          <line>%1</line>\n").arg(line);
-                if (octCh) {
-                    m_out << QString("          <clef-octave-change>%1</clef-octave-change>\n").arg(octCh);
-                }
-                m_out << "        </clef>\n";
+                m_writer.writeClef((nstaves > 1) ? i : -1, sign, line, octCh);
             }
         }
     }
@@ -498,33 +440,24 @@ static QString createMultiLineString(const std::vector<QString> strVec)
 
 
 //---------------------------------------------------------
-// writeIdentification - write the identification
+// identification - write the identification
 //---------------------------------------------------------
 
-void MxmlFile::writeIdentification()
+void MxmlConverter::identification()
 {
-    m_out << "  <identification>\n";
     const EncTitle& ttl = m_ef.title();
     const auto author = createMultiLineString(ttl.m_author);
-    if (!author.isEmpty()) {
-        m_out << "    <creator type=\"composer\">" << author << "</creator>\n";
-    }
     const auto lyricist = createMultiLineString(ttl.m_instruction);
-    if (!lyricist.isEmpty()) {
-        m_out << "    <creator type=\"lyricist\">" << lyricist << "</creator>\n";
-    }
     const auto rights = createMultiLineString(ttl.m_copyright);
-    if (!rights.isEmpty()) {
-        m_out << "    <rights>" << rights << "</rights>\n";
-    }
-    m_out << "    <encoding>\n";
-    m_out << "      <software>Enc2MusicXML</software>\n";
-    // TODO fill in real date
-    // m_out << "      <encoding-date>TBD</encoding-date>\n";
-    m_out << "    </encoding>\n";
-    m_out << "  </identification>\n";
+    const QString software = "Enc2MusicXML";
+
+    m_writer.writeIdentification(author, lyricist, rights, software);
 }
 
+
+//---------------------------------------------------------
+// encClef2xml - convert Encore key to MusicXML fifths
+//---------------------------------------------------------
 
 int encKeyToFifths(unsigned int key)
 {
@@ -538,25 +471,25 @@ int encKeyToFifths(unsigned int key)
 
 
 //---------------------------------------------------------
-// writeKey - write the key
+// key - write the key
 // TBD (too) simple implementation: use keysig of first staff of first measure only
-// TODO: remove duplicate code
 //---------------------------------------------------------
 
-void MxmlFile::writeKey()
+void MxmlConverter::key()
 {
     const bool hasMeasures = m_ef.measures().size() > 0;
     if (hasMeasures) {
         const auto& line = m_ef.lines().at(0);
         const auto& data = line.lineStaffData().at(0);
         quint8 kcType = data.m_key;
-        const auto fifths = encKeyToFifths(kcType);
-        m_out << "        <key>" << endl;
-        m_out << "          <fifths>" << fifths << "</fifths>" << endl;
-        m_out << "        </key>" << endl;
+        m_writer.writeKey(encKeyToFifths(kcType));
     }
 }
 
+
+//---------------------------------------------------------
+// findKeyChange - write a key change in measure m
+//---------------------------------------------------------
 
 const EncMeasureElemKeyChange* findKeyChange(const EncMeasure& m)
 {
@@ -569,32 +502,37 @@ const EncMeasureElemKeyChange* findKeyChange(const EncMeasure& m)
 
 
 //---------------------------------------------------------
-// writeKeyChange - write a key change
+// keyChange - write a key change
 //---------------------------------------------------------
 
-void MxmlFile::writeKeyChange(const EncMeasureElemKeyChange* keyChange)
+void MxmlConverter::keyChange(const EncMeasureElemKeyChange* keyCh)
 {
-    quint8 kcType = keyChange->m_tipo;
+    quint8 kcType = keyCh->m_tipo;
     const auto fifths = encKeyToFifths(kcType);
+    m_writer.writeKeyChange(fifths);
     qDebug()
             << "writeKeyChange"
             << "kcType" << kcType
             << "fifths" << fifths
                ;
-    m_out << "      <attributes>" << endl;
-    m_out << "        <key>" << endl;
-    m_out << "          <fifths>" << fifths << "</fifths>" << endl;
-    m_out << "        </key>" << endl;
-    m_out << "      </attributes>" << endl;
 }
 
+
+//---------------------------------------------------------
+// Determine if note is a grace note
+//---------------------------------------------------------
 
 static bool isGrace(const EncMeasureElemNote* const note)
 {
-    return note->graceType() != graceType::NORMALNOTE;
+    return note->graceType() != GraceType::NORMALNOTE;
 }
 
-// TODO: refactor
+
+//---------------------------------------------------------
+// Determine if note's duration
+// TODO: refactor (common code shared by note and rest
+//---------------------------------------------------------
+
 static int durationNote(const EncMeasureElemNote* const note)
 {
     int duration = faceValue2duration(note->m_faceValue & 0x0F);
@@ -616,7 +554,11 @@ static int durationNote(const EncMeasureElemNote* const note)
 }
 
 
-// TODO refactor
+//---------------------------------------------------------
+// Determine if rest's duration
+// TODO: refactor (common code shared by note and rest
+//---------------------------------------------------------
+
 static int durationRest(const EncMeasureElemRest* const rest)
 {
     int duration = faceValue2duration(rest->m_faceValue & 0x0F);
@@ -633,6 +575,10 @@ static int durationRest(const EncMeasureElemRest* const rest)
     return duration;
 }
 
+
+//---------------------------------------------------------
+// debug
+//---------------------------------------------------------
 
 static void dump_note_timing_measure_elem(const EncMeasureElem* const elem, const QString& id)
 {
@@ -670,6 +616,11 @@ static void dump_note_timing_measure_elem(const EncMeasureElem* const elem, cons
     }
 }
 
+
+//---------------------------------------------------------
+// debug
+//---------------------------------------------------------
+
 static void dump_note_timing_measure_elems(const EncMeasure& m, const QString& id)
 {
     for (const auto& elem : m.measureElems()) {
@@ -679,32 +630,10 @@ static void dump_note_timing_measure_elems(const EncMeasure& m, const QString& i
 
 
 //---------------------------------------------------------
-// writeRepeatLeft - write repeats at the left side of a measure
+// encRepeatToWords - convert Encore repeats to MusicXML words
 //---------------------------------------------------------
 
-static void writeRepeatLeft(QTextStream& out, const repeatType repeat)
-{
-    const bool coda = repeat == repeatType::CODA1 || repeat == repeatType::CODA2;
-    const bool segno = repeat == repeatType::SEGNO;
-
-    if (coda || segno) {
-        out << "      <direction placement=\"above\">\n";
-        out << "        <direction-type>\n";
-        if (coda)
-            out << "          <coda/>\n";
-        else if (segno)
-            out << "          <segno/>\n";
-        out << "        </direction-type>\n";
-        out << "      </direction>\n";
-    }
-}
-
-
-//---------------------------------------------------------
-// writeRepeatRight - write repeats at the right side of a measure
-//---------------------------------------------------------
-
-static void writeRepeatRight(QTextStream& out, const repeatType repeat)
+static QString encRepeatToWords(const repeatType repeat)
 {
     QString words;
 
@@ -723,13 +652,7 @@ static void writeRepeatRight(QTextStream& out, const repeatType repeat)
     else if (repeat == repeatType::FINE)
         words = "Fine";
 
-    if (!words.isEmpty()) {
-        out << "      <direction placement=\"above\">\n";
-        out << "        <direction-type>\n";
-        out << "          <words>" << words << "</words>\n";
-        out << "        </direction-type>\n";
-        out << "      </direction>\n";
-    }
+    return words;
 }
 
 
@@ -747,19 +670,19 @@ static bool notesAreInChord(const EncMeasureElemNote* const note1,
 
 
 //---------------------------------------------------------
-// writeMeasure - write a measure of a part
-// note: assumes only single staff parts
+// measure - write a measure of a part
 //---------------------------------------------------------
 
-void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
+void MxmlConverter::measure(const int partNr, const size_t measureNr)
 {
     if (measureNr >= m_ef.measures().size())
         return;
 
-    m_out << "    <measure number=\"" << measureNr + 1 << "\">\n";
+    const QString measurePlusNumber = QString("measure number=\"%1\"").arg(measureNr + 1);
+    m_writer.writeElementStart("    ", measurePlusNumber);
 
     const auto& m = m_ef.measures().at(measureNr);
-    const auto keyChange = findKeyChange(m);
+    const auto keyCh = findKeyChange(m);
 
 
     qDebug() << "xxx_note_timing"
@@ -787,12 +710,12 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
         }
     }
 
-    writeBarlineLeft(partNr, measureNr);
+    barlineLeft(partNr, measureNr);
 
     if (measureNr == 0)
-        writeAttributes(partNr);
-    else if (keyChange)
-        writeKeyChange(keyChange);
+        attributes(partNr);
+    else if (keyCh)
+        keyChange(keyCh);
 
     qDebug() << "xxx_repeat_sym"
              << "measureNr" << measureNr
@@ -802,7 +725,7 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
 
     if (partNr == 0) {
         // write repeat only for first staff
-        writeRepeatLeft(m_out, m.repeat());
+        repeatLeft(m.repeat());
     }
 
     TupletHandler th;
@@ -816,13 +739,13 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
         const EncMeasureElemNote* prevnote = nullptr;
         if (tick > 0) {
             // explicit backup to prevent error message at start of voice
-            writeBackupForward(-tick, 0);
+            m_writer.writeBackupForward(-tick, 0);
             tick = 0;
         }
         for (const auto& elem : m.measureElems()) {
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
                 int duration = 0;
-                if (const EncMeasureElemNote* const note = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
+                if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
                     /*
                     if (elem->m_tick != tick) {
                         qDebug() << "xxx_voice_timing"
@@ -836,7 +759,7 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
                         tick = elem->m_tick;
                     }
                     */
-                    const bool isChord = notesAreInChord(prevnote, note);
+                    const bool isChord = notesAreInChord(prevnote, curnote);
                     if (isChord) {
                         qDebug() << "xxx_chord"
                                  << "measureNr" << measureNr
@@ -844,11 +767,11 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
                                  << "elem->m_tick" << elem->m_tick
                                     ;
                     }
-                    writeNote(note, partNr, th, isChord);
-                    duration = isChord ? 0 : durationNote(note);
-                    prevnote = note;
+                    note(curnote, partNr, th, isChord);
+                    duration = isChord ? 0 : durationNote(curnote);
+                    prevnote = curnote;
                 }
-                else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
+                else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
                     /*
                     if (elem->m_tick != tick) {
                         qDebug() << "xxx_voice_timing"
@@ -861,8 +784,8 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
                         tick = elem->m_tick;
                     }
                     */
-                    writeRest(rest, partNr, th);
-                    duration = durationRest(rest);
+                    rest(currest, partNr, th);
+                    duration = durationRest(currest);
                     prevnote = nullptr; // can't be part of chord
                 }
                 tick += duration;
@@ -872,20 +795,20 @@ void MxmlFile::writeMeasure(const int partNr, const size_t measureNr)
 
     if (partNr == 0) {
         // write repeat only for first staff
-        writeRepeatRight(m_out, m.repeat());
+        m_writer.writeRepeatRight(encRepeatToWords(m.repeat()));
     }
 
-    writeBarlineRight(partNr, measureNr);
+    barlineRight(partNr, measureNr);
 
-    m_out << "    </measure>" << endl;
+    m_writer.writeElementEnd("    ", "measure");
 }
 
 
 //---------------------------------------------------------
-// writeNote - write a note
+// note - write a note
 //---------------------------------------------------------
 
-void MxmlFile::writeNote(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord)
+void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord)
 {
     char step = ' ';
     int alter = 0;
@@ -901,196 +824,139 @@ void MxmlFile::writeNote(const EncMeasureElemNote* const note, const int partNr,
         fifths = encKeyToFifths(kcType);
     }
     midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), fifths, step, alter, octave);
-    m_out << "      <note>\n";
+    m_writer.writeElementStart("      ", "note");
 
-    if (note->graceType() == graceType::ACCIACCATURA) {
-        m_out << "        <grace slash=\"yes\"/>\n";
-    }
-    else if (note->graceType() == graceType::APPOGGIATURA) {
-        m_out << "        <grace/>\n";
-    }
+    m_writer.writeGrace(note->graceType());
 
     if (chord) {
-        m_out << "        <chord/>\n";
+        m_writer.writeElement("        ", "chord");
     }
 
-    m_out << "        <pitch>\n";
-    m_out << "          <step>" << step << "</step>\n";
-    if (alter) {
-        m_out << "          <alter>" << alter << "</alter>\n";
-    }
-    m_out << "          <octave>" << octave << "</octave>\n";
-    m_out << "        </pitch>\n";
+    m_writer.writePitch(step, alter, octave);
 
     if (!isGrace(note)) {
-        m_out << "        <duration>" << durationNote(note) << "</duration>\n";
+        m_writer.writeElement("        ", "duration", durationNote(note));
     }
 
-    if (hasMultipleVoices(partNr)) {
-        m_out << "        <voice>" << (note->m_voice + 1) << "</voice>\n";
-    }
-    m_out << "        <type>" << faceValue2xml(note->m_faceValue & 0x0F) << "</type>\n";
-    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
-        m_out << "        <dot/>\n";
-    }
-    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
-        m_out << "        <time-modification>\n";
-        m_out << "          <actual-notes>" << note->actualNotes() << "</actual-notes>\n";
-        m_out << "          <normal-notes>" << note->normalNotes() << "</normal-notes>\n";
-        m_out << "        </time-modification>\n";
-    }
+    m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
+    m_writer.writeElement("        ", "type", faceValue2xml(note->m_faceValue & 0x0F));
+    m_writer.writeDots(note->m_dotControl & 3);
+    m_writer.writeTimeModification(note->actualNotes(), note->normalNotes());
     const int nstaves = m_ef.staves().at(partNr).m_nstaves;
-    if (nstaves > 1) {
-        if (note->m_voice < 4) {
-            m_out << "        <staff>1</staff>\n";
-        }
-        else {
-            m_out << "        <staff>2</staff>\n";
-        }
-    }
+    m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
-    if (tupletState == TupletHandler::type::START || tupletState == TupletHandler::type::STOP) {
-        m_out << "        <notations>\n";
-        if (tupletState == TupletHandler::type::START) {
-            m_out << "          <tuplet type=\"start\"/>\n";
-        }
-        if (tupletState == TupletHandler::type::STOP) {
-            m_out << "          <tuplet type=\"stop\"/>\n";
-        }
-        m_out << "        </notations>\n";
-    }
-    m_out << "      </note>\n";
+    m_writer.writeTuplet(tupletState);
+    m_writer.writeElementEnd("      ", "note");
 }
 
 
 //---------------------------------------------------------
-// writePart - write part n
+// part - write part n
 //---------------------------------------------------------
 
-void MxmlFile::writePart(const int n)
+void MxmlConverter::part(const int n)
 {
-    m_out << "  <part id=\"P" << n + 1 << "\">\n";
+    const QString partPlusId = QString("part id=\"P%1\"").arg(n + 1);
+    m_writer.writeElementStart("  ", partPlusId);
     for (unsigned int i = 0; i < m_ef.measures().size(); ++i)
-        writeMeasure(n, i);
-    m_out << "  </part>" << endl;
+        measure(n, i);
+    m_writer.writeElementEnd("  ", "part");
 }
 
 
 //---------------------------------------------------------
-// writePartList - write the part list
+// partList - write the part list
 //---------------------------------------------------------
 
-void MxmlFile::writePartList()
+void MxmlConverter::partList()
 {
-    m_out << "  <part-list>\n";
+    m_writer.writeElementStart("  ", "part-list");
     int count = 0;
     for (const auto& s : m_ef.staves()) {
         ++count;
-        writeScorePart(count, s);
+        scorePart(count, s);
     }
-    m_out << "  </part-list>\n";
+    m_writer.writeElementEnd("  ", "part-list");
 }
 
 
 //---------------------------------------------------------
-// writeParts - write the parts
+// parts - write the parts
 //---------------------------------------------------------
 
-void MxmlFile::writeParts()
+void MxmlConverter::parts()
 {
     for (unsigned int count = 0; count < m_ef.staves().size(); ++count) {
-        writePart(count);
+        part(count);
     }
 }
 
 
 //---------------------------------------------------------
-// writeRest - write a rest
+// repeatLeft - write repeats at the left side of a measure
 //---------------------------------------------------------
 
-void MxmlFile::writeRest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th)
+void MxmlConverter::repeatLeft(const repeatType repeat)
 {
-    m_out << "      <note>\n";
-    m_out << "        <rest/>\n";
-    m_out << "        <duration>" << durationRest(rest) << "</duration>\n";
-    if (hasMultipleVoices(partNr)) {
-        m_out << "        <voice>" << (rest->m_voice + 1) << "</voice>\n";
-    }
-    m_out << "        <type>" << faceValue2xml(rest->m_faceValue & 0x0F) << "</type>\n";
-    for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
-        m_out << "        <dot/>\n";
-    }
-    if (rest->actualNotes() > 0 && rest->normalNotes() > 0) {
-        m_out << "        <time-modification>\n";
-        m_out << "          <actual-notes>" << rest->actualNotes() << "</actual-notes>\n";
-        m_out << "          <normal-notes>" << rest->normalNotes() << "</normal-notes>\n";
-        m_out << "        </time-modification>\n";
-    }
+    const bool coda = repeat == repeatType::CODA1 || repeat == repeatType::CODA2;
+    const bool segno = repeat == repeatType::SEGNO;
+
+    m_writer.writeRepeatLeft(coda, segno);
+}
+
+
+//---------------------------------------------------------
+// rest - write a rest
+//---------------------------------------------------------
+
+void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th)
+{
+    m_writer.writeElementStart("      ", "note");
+    m_writer.writeElement("        ", "rest");
+    m_writer.writeElement("        ", "duration", durationRest(rest));
+    m_writer.writeVoice(hasMultipleVoices(partNr), rest->m_voice + 1);
+    m_writer.writeElement("        ", "type", faceValue2xml(rest->m_faceValue & 0x0F));
+    m_writer.writeDots(rest->m_dotControl & 3);
+    m_writer.writeTimeModification(rest->actualNotes(), rest->normalNotes());
     const int nstaves = m_ef.staves().at(partNr).m_nstaves;
-    if (nstaves > 1) {
-        if (rest->m_voice < 4) {
-            m_out << "        <staff>1</staff>\n";
-        }
-        else {
-            m_out << "        <staff>2</staff>\n";
-        }
-    }
+    m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
-    if (tupletState == TupletHandler::type::START || tupletState == TupletHandler::type::STOP) {
-        m_out << "        <notations>\n";
-        if (tupletState == TupletHandler::type::START) {
-            m_out << "          <tuplet type=\"start\"/>\n";
-        }
-        if (tupletState == TupletHandler::type::STOP) {
-            m_out << "          <tuplet type=\"stop\"/>\n";
-        }
-        m_out << "        </notations>\n";
-    }
-    m_out << "      </note>\n";
+    m_writer.writeTuplet(tupletState);
+    m_writer.writeElementEnd("      ", "note");
 }
 
 
 //---------------------------------------------------------
-// writeScorePart - write score part n
+// scorePart - write score part n
 //---------------------------------------------------------
 
-void MxmlFile::writeScorePart(const int n, const EncInstrument &instr)
+void MxmlConverter::scorePart(const int n, const EncInstrument &instr)
 {
-    m_out << "    <score-part id=\"P" << n << "\">\n";
-    m_out << "      <part-name>" << instr.m_name << "</part-name>\n";
-    m_out << "    </score-part>\n";
+    m_writer.writeScorePart(n, instr.m_name);
 }
 
 
 //---------------------------------------------------------
-// writeTime - write the time signature
+// time - write the time signature
 //---------------------------------------------------------
 
-void MxmlFile::writeTime()
+void MxmlConverter::time()
 {
     // (too) simple implementation: use timesig of first measure only
     const bool hasMeasures = m_ef.measures().size() > 0;
     if (hasMeasures) {
-        m_out << "        <time>\n";
-        m_out << "          <beats>" << m_ef.measures().at(0).m_timeSigNum << "</beats>\n";
-        m_out << "          <beat-type>" << m_ef.measures().at(0).m_timeSigDen << "</beat-type>\n";
-        m_out << "        </time>\n";
+        m_writer.writeTime(m_ef.measures().at(0).m_timeSigNum, m_ef.measures().at(0).m_timeSigDen);
     }
 }
 
 
 //---------------------------------------------------------
-// writeWork - write the work description
+// work - write the work description
 //---------------------------------------------------------
 
-void MxmlFile::writeWork()
+void MxmlConverter::work()
 {
-    m_out << "  <work>\n";
-    const EncTitle& ttl = m_ef.title();
-    const auto subtitle = createMultiLineString(ttl.m_subtitle);
-    if (!subtitle.isEmpty()) {
-        m_out << "    <work-number>" << createMultiLineString(ttl.m_subtitle) << "</work-number>\n";
-    }
-    m_out << "    <work-title>" << ttl.m_title << "</work-title>\n";
-    m_out << "  </work>\n";
+    const EncTitle& enctitle = m_ef.title();
+    const auto subtitle = createMultiLineString(enctitle.m_subtitle);
+    m_writer.writeWork(enctitle.m_title, subtitle);
 }

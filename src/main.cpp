@@ -25,7 +25,7 @@
 #include <QtDebug>
 
 #include "encfile.h"
-#include "mxmlfile.h"
+#include "mxmlconvert.h"
 #include "textfile.h"
 
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("Enc2MusicXML");
-    QCoreApplication::setApplicationVersion("0.4");
+    QCoreApplication::setApplicationVersion("0.4.1");
 
     QCommandLineParser clp;
     clp.setApplicationDescription("Enc2MusicXML converts Encore files to MusicXML.");
@@ -79,8 +79,8 @@ int main(int argc, char *argv[])
         for (const auto& s : clp.positionalArguments()) {
             EncFile ef;
             read_file(s, ef);
-            MxmlFile mf(ef);
-            mf.write();
+            MxmlConverter mf(ef);
+            mf.convertEncToMxml();
         }
     }
 

@@ -3,16 +3,19 @@ QT      -= gui
 
 CONFIG  += c++11
 
-TARGET   = Enc2MusicXML
+TARGET   = Enc2MusicXMLdev
 TEMPLATE = app
 CONFIG  += console
 CONFIG  -= app_bundle
 
-SOURCES += main.cpp \
-           encfile.cpp \
-           mxmlfile.cpp \
+SOURCES += encfile.cpp \
+           main.cpp \
+           mxmlconvert.cpp \
+           mxmlwriter.cpp \
            textfile.cpp
 
-HEADERS += encfile.h \
-           mxmlfile.h \
+HEADERS += commondefs.h \
+           encfile.h \
+           mxmlconvert.h \
+           mxmlwriter.h \
            textfile.h
