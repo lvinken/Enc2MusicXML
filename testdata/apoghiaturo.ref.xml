@@ -235,8 +235,7 @@
         <type>half</type>
       </note>
     </measure>
-    <measure number="8">
-    </measure>
+    <measure number="8"/>
     <measure number="9">
       <barline location="right">
         <bar-style>light-heavy</bar-style>

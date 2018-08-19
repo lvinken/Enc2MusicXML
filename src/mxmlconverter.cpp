@@ -23,7 +23,7 @@
 #include <QtDebug>
 
 #include "encfile.h"
-#include "mxmlconvert.h"
+#include "mxmlconverter.h"
 
 
 //---------------------------------------------------------
@@ -270,13 +270,14 @@ void MxmlConverter::convertEncToMxml()
     QFile outFile;
     outFile.open(stdout, QFile::WriteOnly);
     m_writer.setDevice(&outFile);
-    m_writer.writeXmlHeader();
-    m_writer.writeElementStart("", "score-partwise");
+    m_writer.writeBegin();
+    m_writer.writeElementStart("score-partwise");
     work();
     identification();
     partList();
     parts();
-    m_writer.writeElementEnd("", "score-partwise");
+    m_writer.writeElementEnd();
+    m_writer.writeEnd();
 }
 
 
@@ -286,13 +287,13 @@ void MxmlConverter::convertEncToMxml()
 
 void MxmlConverter::attributes(const int partNr)
 {
-    m_writer.writeElementStart("      ", "attributes");
+    m_writer.writeElementStart("attributes");
     m_writer.writeDivisions(240);
     key();
     time();
     m_writer.writeStaves(m_ef.staves().at(partNr).m_nstaves);
     clefs(partNr);
-    m_writer.writeElementEnd("      ", "attributes");
+    m_writer.writeElementEnd();
 }
 
 
@@ -678,8 +679,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
     if (measureNr >= m_ef.measures().size())
         return;
 
-    const QString measurePlusNumber = QString("measure number=\"%1\"").arg(measureNr + 1);
-    m_writer.writeElementStart("    ", measurePlusNumber);
+    m_writer.writeElementStartWithAttribute("measure", "number", measureNr + 1);
 
     const auto& m = m_ef.measures().at(measureNr);
     const auto keyCh = findKeyChange(m);
@@ -800,7 +800,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
     barlineRight(partNr, measureNr);
 
-    m_writer.writeElementEnd("    ", "measure");
+    m_writer.writeElementEnd();
 }
 
 
@@ -824,29 +824,29 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
         fifths = encKeyToFifths(kcType);
     }
     midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), fifths, step, alter, octave);
-    m_writer.writeElementStart("      ", "note");
+    m_writer.writeElementStart("note");
 
     m_writer.writeGrace(note->graceType());
 
     if (chord) {
-        m_writer.writeElement("        ", "chord");
+        m_writer.writeElement("chord");
     }
 
     m_writer.writePitch(step, alter, octave);
 
     if (!isGrace(note)) {
-        m_writer.writeElement("        ", "duration", durationNote(note));
+        m_writer.writeElement("duration", durationNote(note));
     }
 
     m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
-    m_writer.writeElement("        ", "type", faceValue2xml(note->m_faceValue & 0x0F));
+    m_writer.writeElement("type", faceValue2xml(note->m_faceValue & 0x0F));
     m_writer.writeDots(note->m_dotControl & 3);
     m_writer.writeTimeModification(note->actualNotes(), note->normalNotes());
     const int nstaves = m_ef.staves().at(partNr).m_nstaves;
     m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);
-    m_writer.writeElementEnd("      ", "note");
+    m_writer.writeElementEnd();
 }
 
 
@@ -856,11 +856,11 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
 
 void MxmlConverter::part(const int n)
 {
-    const QString partPlusId = QString("part id=\"P%1\"").arg(n + 1);
-    m_writer.writeElementStart("  ", partPlusId);
+    const QString partId = QString("P%1").arg(n + 1);
+    m_writer.writeElementStartWithAttribute("part", "id", partId);
     for (unsigned int i = 0; i < m_ef.measures().size(); ++i)
         measure(n, i);
-    m_writer.writeElementEnd("  ", "part");
+    m_writer.writeElementEnd();
 }
 
 
@@ -870,13 +870,13 @@ void MxmlConverter::part(const int n)
 
 void MxmlConverter::partList()
 {
-    m_writer.writeElementStart("  ", "part-list");
+    m_writer.writeElementStart("part-list");
     int count = 0;
     for (const auto& s : m_ef.staves()) {
         ++count;
         scorePart(count, s);
     }
-    m_writer.writeElementEnd("  ", "part-list");
+    m_writer.writeElementEnd();
 }
 
 
@@ -911,18 +911,18 @@ void MxmlConverter::repeatLeft(const repeatType repeat)
 
 void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th)
 {
-    m_writer.writeElementStart("      ", "note");
-    m_writer.writeElement("        ", "rest");
-    m_writer.writeElement("        ", "duration", durationRest(rest));
+    m_writer.writeElementStart("note");
+    m_writer.writeElement("rest");
+    m_writer.writeElement("duration", durationRest(rest));
     m_writer.writeVoice(hasMultipleVoices(partNr), rest->m_voice + 1);
-    m_writer.writeElement("        ", "type", faceValue2xml(rest->m_faceValue & 0x0F));
+    m_writer.writeElement("type", faceValue2xml(rest->m_faceValue & 0x0F));
     m_writer.writeDots(rest->m_dotControl & 3);
     m_writer.writeTimeModification(rest->actualNotes(), rest->normalNotes());
     const int nstaves = m_ef.staves().at(partNr).m_nstaves;
     m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);
-    m_writer.writeElementEnd("      ", "note");
+    m_writer.writeElementEnd();
 }
 
 

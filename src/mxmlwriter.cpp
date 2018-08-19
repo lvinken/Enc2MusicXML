@@ -29,7 +29,8 @@
 
 MxmlWriter::MxmlWriter()
 {
-
+    m_xml.setAutoFormatting(true);
+    m_xml.setAutoFormattingIndent(2);
 }
 
 
@@ -40,15 +41,15 @@ MxmlWriter::MxmlWriter()
 void MxmlWriter::writeBackupForward(const int duration, const int voice)
 {
     if (duration < 0) {
-        m_out << "      <backup>\n";
-        m_out << "        <duration>" << (-duration) << "</duration>\n";
-        m_out << "      </backup>\n";
+        m_xml.writeStartElement("backup");
+        m_xml.writeTextElement("duration", QString::number(-duration));
+        m_xml.writeEndElement();
     }
     else if (duration > 0) {
-        m_out << "      <forward>\n";
-        m_out << "        <duration>" << duration << "</duration>\n";
-        m_out << "        <voice>" << (voice + 1) << "</voice>\n";
-        m_out << "      <forward>\n";
+        m_xml.writeStartElement("forward");
+        m_xml.writeTextElement("duration", QString::number(duration));
+        m_xml.writeTextElement("voice", QString::number(voice + 1));
+        m_xml.writeEndElement();
     }
 }
 
@@ -60,18 +61,24 @@ void MxmlWriter::writeBackupForward(const int duration, const int voice)
 void MxmlWriter::writeBarlineLeft(const bool repeatStart, const bool endingStart, const bool barlineDblLeft, const QString& endingNumber)
 {
     if (repeatStart || endingStart || barlineDblLeft) {
-        m_out << "      <barline location=\"left\">\n";
+        m_xml.writeStartElement("barline");
+        m_xml.writeAttribute("location", "left");
         if (repeatStart) {
-            m_out << "        <bar-style>heavy-light</bar-style>\n";
-            m_out << "        <repeat direction=\"forward\"/>\n";
+            m_xml.writeTextElement("bar-style", "heavy-light");
+            m_xml.writeStartElement("repeat");
+            m_xml.writeAttribute("direction", "forward");
+            m_xml.writeEndElement();
         }
         if (barlineDblLeft) {
-            m_out << "          <bar-style>light-light</bar-style>\n";
+            m_xml.writeTextElement("bar-style", "light-light");
         }
         if (endingStart) {
-            m_out << "        <ending number=\"" << endingNumber << "\" type=\"start\"/>\n";
+            m_xml.writeStartElement("ending");
+            m_xml.writeAttribute("number", endingNumber);
+            m_xml.writeAttribute("type", "start");
+            m_xml.writeEndElement();
         }
-        m_out << "      </barline>\n";
+        m_xml.writeEndElement();
     }
 }
 
@@ -83,22 +90,41 @@ void MxmlWriter::writeBarlineLeft(const bool repeatStart, const bool endingStart
 void MxmlWriter::writeBarlineRight(const bool repeatEnd, const bool endingStop, const bool barlineEnd, const bool barlineDbl, const int repeatAlternative)
 {
     if (repeatEnd || endingStop || barlineEnd || barlineDbl) {
-        m_out << "      <barline location=\"right\">\n";
+        m_xml.writeStartElement("barline");
+        m_xml.writeAttribute("location", "right");
         if (repeatEnd || barlineEnd) {
-            m_out << "        <bar-style>light-heavy</bar-style>\n";
+            m_xml.writeTextElement("bar-style", "light-heavy");
         }
         if (barlineDbl) {
-            m_out << "        <bar-style>light-light</bar-style>\n";
+            m_xml.writeTextElement("bar-style", "light-light");
         }
         if (endingStop) {
             QString type = repeatAlternative == 1 ? "stop" : "discontinue";
-            m_out << "        <ending number=\"" << repeatAlternative << "\" type=\"" << type << "\"/>\n";
+            m_xml.writeStartElement("ending");
+            m_xml.writeAttribute("number", QString::number(repeatAlternative));
+            m_xml.writeAttribute("type", type);
+            m_xml.writeEndElement();
         }
         if (repeatEnd || repeatAlternative == 1) {
-            m_out << "        <repeat direction=\"backward\"/>\n";
+            m_xml.writeStartElement("repeat");
+            m_xml.writeAttribute("direction", "backward");
+            m_xml.writeEndElement();
         }
-        m_out << "      </barline>\n";
+        m_xml.writeEndElement();
     }
+}
+
+
+//---------------------------------------------------------
+// writeBegin - begin writing: creates the header
+//---------------------------------------------------------
+
+void MxmlWriter::writeBegin()
+{
+    m_xml.writeStartDocument();
+    m_xml.writeDTD("<!DOCTYPE score-partwise PUBLIC "
+                   "\"-//Recordare//DTD MusicXML 3.1 Partwise//EN\" "
+                   "\"http://www.musicxml.org/dtds/partwise.dtd\">");
 }
 
 
@@ -108,18 +134,16 @@ void MxmlWriter::writeBarlineRight(const bool repeatEnd, const bool endingStop, 
 
 void MxmlWriter::writeClef(const int number, const QString& sign, const int line, const int octCh)
 {
+    m_xml.writeStartElement("clef");
     if (number >= 0) {
-        m_out << QString("        <clef number=\"%1\">\n").arg(number + 1);
+        m_xml.writeAttribute("number", QString::number(number + 1));
     }
-    else {
-        m_out << "        <clef>\n";
-    }
-    m_out << QString("          <sign>%1</sign>\n").arg(sign);
-    m_out << QString("          <line>%1</line>\n").arg(line);
+    m_xml.writeTextElement("sign", sign);
+    m_xml.writeTextElement("line", QString::number(line));
     if (octCh) {
-        m_out << QString("          <clef-octave-change>%1</clef-octave-change>\n").arg(octCh);
+        m_xml.writeTextElement("clef-octave-change", QString::number(octCh));
     }
-    m_out << "        </clef>\n";
+    m_xml.writeEndElement();
 }
 
 
@@ -129,7 +153,7 @@ void MxmlWriter::writeClef(const int number, const QString& sign, const int line
 
 void MxmlWriter::writeDivisions(const int divisions)
 {
-    m_out << "        <divisions>" << divisions << "</divisions>\n";
+    m_xml.writeTextElement("divisions", QString::number(divisions));
 }
 
 
@@ -140,7 +164,7 @@ void MxmlWriter::writeDivisions(const int divisions)
 void MxmlWriter::writeDots(const int dots)
 {
     for (int i = 0; i < dots; ++i) {
-        m_out << "        <dot/>\n";
+        m_xml.writeEmptyElement("dot");
     }
 }
 
@@ -149,9 +173,9 @@ void MxmlWriter::writeDots(const int dots)
 // writeElement - write an empty element
 //---------------------------------------------------------
 
-void MxmlWriter::writeElement(const QString &indent, const QString& element)
+void MxmlWriter::writeElement(const QString& element)
 {
-    m_out << indent << "<" << element << "/>\n";
+    m_xml.writeEmptyElement(element);
 }
 
 
@@ -159,9 +183,9 @@ void MxmlWriter::writeElement(const QString &indent, const QString& element)
 // writeElement - write an element containing an integer value
 //---------------------------------------------------------
 
-void MxmlWriter::writeElement(const QString& indent, const QString& element, const int value)
+void MxmlWriter::writeElement(const QString& element, const int value)
 {
-    m_out << indent << "<" << element << ">" << value << "</" << element << ">\n";
+    m_xml.writeTextElement(element, QString::number(value));
 }
 
 
@@ -169,9 +193,9 @@ void MxmlWriter::writeElement(const QString& indent, const QString& element, con
 // writeElement - write an element containing a string value
 //---------------------------------------------------------
 
-void MxmlWriter::writeElement(const QString& indent, const QString& element, const QString& value)
+void MxmlWriter::writeElement(const QString& element, const QString& value)
 {
-    m_out << indent << "<" << element << ">" << value << "</" << element << ">\n";
+    m_xml.writeTextElement(element, value);
 }
 
 
@@ -179,9 +203,9 @@ void MxmlWriter::writeElement(const QString& indent, const QString& element, con
 // writeElement - write an element start tag
 //---------------------------------------------------------
 
-void MxmlWriter::writeElementStart(const QString &indent, const QString& element)
+void MxmlWriter::writeElementStart(const QString& element)
 {
-    m_out << indent << "<" << element << ">\n";
+    m_xml.writeStartElement(element);
 }
 
 
@@ -189,9 +213,41 @@ void MxmlWriter::writeElementStart(const QString &indent, const QString& element
 // writeElement - write an element end tag
 //---------------------------------------------------------
 
-void MxmlWriter::writeElementEnd(const QString& indent, const QString& element)
+void MxmlWriter::writeElementEnd()
 {
-    m_out << indent << "</" << element << ">\n";
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
+// writeElement - write an element start tag with an attribute
+//---------------------------------------------------------
+
+void MxmlWriter::writeElementStartWithAttribute(const QString& element, const QString& attr, const int value)
+{
+    m_xml.writeStartElement(element);
+    m_xml.writeAttribute(attr, QString::number(value));
+}
+
+
+//---------------------------------------------------------
+// writeElement - write an element start tag with an attribute
+//---------------------------------------------------------
+
+void MxmlWriter::writeElementStartWithAttribute(const QString& element, const QString& attr, const QString& value)
+{
+    m_xml.writeStartElement(element);
+    m_xml.writeAttribute(attr, value);
+}
+
+
+//---------------------------------------------------------
+// writeEnd - end writing: flush
+//---------------------------------------------------------
+
+void MxmlWriter::writeEnd()
+{
+    m_xml.writeEndDocument();
 }
 
 
@@ -202,10 +258,12 @@ void MxmlWriter::writeElementEnd(const QString& indent, const QString& element)
 void MxmlWriter::writeGrace(const GraceType type)
 {
     if (type == GraceType::ACCIACCATURA) {
-        m_out << "        <grace slash=\"yes\"/>\n";
+        m_xml.writeStartElement("grace");
+        m_xml.writeAttribute("slash", "yes");
+        m_xml.writeEndElement();
     }
     else if (type == GraceType::APPOGGIATURA) {
-        m_out << "        <grace/>\n";
+        m_xml.writeEmptyElement("grace");
     }
 }
 
@@ -219,22 +277,28 @@ void MxmlWriter::writeIdentification(const QString& author,
                                      const QString& rights,
                                      const QString& software)
 {
-    m_out << "  <identification>\n";
+    m_xml.writeStartElement("identification");
     if (!author.isEmpty()) {
-        m_out << "    <creator type=\"composer\">" << author << "</creator>\n";
+        m_xml.writeStartElement("creator");
+        m_xml.writeAttribute("type", "composer");
+        m_xml.writeCharacters(author);
+        m_xml.writeEndElement();
     }
     if (!lyricist.isEmpty()) {
-        m_out << "    <creator type=\"lyricist\">" << lyricist << "</creator>\n";
+        m_xml.writeStartElement("creator");
+        m_xml.writeAttribute("type", "lyricist");
+        m_xml.writeCharacters(lyricist);
+        m_xml.writeEndElement();
     }
     if (!rights.isEmpty()) {
-        m_out << "    <rights>" << rights << "</rights>\n";
+        m_xml.writeTextElement("rights", rights);
     }
-    m_out << "    <encoding>\n";
-    m_out << "      <software>" << software << "</software>\n";
+    m_xml.writeStartElement("encoding");
+    m_xml.writeTextElement("software", software);
     // TODO fill in real date
-    // m_out << "      <encoding-date>TBD</encoding-date>\n";
-    m_out << "    </encoding>\n";
-    m_out << "  </identification>\n";
+    // <encoding-date>TBD</encoding-date>
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
 }
 
 
@@ -244,9 +308,9 @@ void MxmlWriter::writeIdentification(const QString& author,
 
 void MxmlWriter::writeKey(const int fifths)
 {
-    m_out << "        <key>" << endl;
-    m_out << "          <fifths>" << fifths << "</fifths>" << endl;
-    m_out << "        </key>" << endl;
+    m_xml.writeStartElement("key");
+    m_xml.writeTextElement("fifths", QString::number(fifths));
+    m_xml.writeEndElement();
 }
 
 
@@ -256,9 +320,9 @@ void MxmlWriter::writeKey(const int fifths)
 
 void MxmlWriter::writeKeyChange(const int fifths)
 {
-    m_out << "      <attributes>" << endl;
+    m_xml.writeStartElement("attributes");
     writeKey(fifths);
-    m_out << "      </attributes>" << endl;
+    m_xml.writeEndElement();
 }
 
 
@@ -269,14 +333,17 @@ void MxmlWriter::writeKeyChange(const int fifths)
 void MxmlWriter::writeRepeatLeft(const bool coda, const bool segno)
 {
     if (coda || segno) {
-        m_out << "      <direction placement=\"above\">\n";
-        m_out << "        <direction-type>\n";
-        if (coda)
-            m_out << "          <coda/>\n";
-        else if (segno)
-            m_out << "          <segno/>\n";
-        m_out << "        </direction-type>\n";
-        m_out << "      </direction>\n";
+        m_xml.writeStartElement("direction");
+        m_xml.writeAttribute("placement", "above");
+        m_xml.writeStartElement("direction-type");
+        if (coda) {
+            m_xml.writeEmptyElement("coda");
+        }
+        else if (segno) {
+            m_xml.writeEmptyElement("segno");
+        }
+        m_xml.writeEndElement();
+        m_xml.writeEndElement();
     }
 }
 
@@ -287,11 +354,12 @@ void MxmlWriter::writeRepeatLeft(const bool coda, const bool segno)
 void MxmlWriter::writeRepeatRight(const QString& words)
 {
     if (!words.isEmpty()) {
-        m_out << "      <direction placement=\"above\">\n";
-        m_out << "        <direction-type>\n";
-        m_out << "          <words>" << words << "</words>\n";
-        m_out << "        </direction-type>\n";
-        m_out << "      </direction>\n";
+        m_xml.writeStartElement("direction");
+        m_xml.writeAttribute("placement", "above");
+        m_xml.writeStartElement("direction-type");
+        m_xml.writeTextElement("words", words);
+        m_xml.writeEndElement();
+        m_xml.writeEndElement();
     }
 }
 
@@ -302,9 +370,10 @@ void MxmlWriter::writeRepeatRight(const QString& words)
 
 void MxmlWriter::writeScorePart(const int n, const QString& instr)
 {
-    m_out << "    <score-part id=\"P" << n << "\">\n";
-    m_out << "      <part-name>" << instr << "</part-name>\n";
-    m_out << "    </score-part>\n";
+    m_xml.writeStartElement("score-part");
+    m_xml.writeAttribute("id", QString("P%1").arg(n));
+    m_xml.writeTextElement("part-name", instr);
+    m_xml.writeEndElement();
 }
 
 
@@ -315,7 +384,7 @@ void MxmlWriter::writeScorePart(const int n, const QString& instr)
 void MxmlWriter::writeStaff(const int nstaves, const int staff)
 {
     if (nstaves > 1) {
-        m_out << "        <staff>" << staff << "</staff>\n";
+        m_xml.writeTextElement("staff", QString::number(staff));
     }
 }
 
@@ -327,7 +396,7 @@ void MxmlWriter::writeStaff(const int nstaves, const int staff)
 void MxmlWriter::writeStaves(const int nstaves)
 {
     if (nstaves > 1) {
-        m_out << "        <staves>" << nstaves << "</staves>\n";
+        m_xml.writeTextElement("staves", QString::number(nstaves));
     }
 }
 
@@ -338,13 +407,13 @@ void MxmlWriter::writeStaves(const int nstaves)
 
 void MxmlWriter::writePitch(const char step, const int alter, const int octave)
 {
-    m_out << "        <pitch>\n";
-    m_out << "          <step>" << step << "</step>\n";
+    m_xml.writeStartElement("pitch");
+    m_xml.writeTextElement("step", QChar(step));
     if (alter) {
-        m_out << "          <alter>" << alter << "</alter>\n";
+        m_xml.writeTextElement("alter", QString::number(alter));
     }
-    m_out << "          <octave>" << octave << "</octave>\n";
-    m_out << "        </pitch>\n";
+    m_xml.writeTextElement("octave", QString::number(octave));
+    m_xml.writeEndElement();
 }
 
 
@@ -354,43 +423,47 @@ void MxmlWriter::writePitch(const char step, const int alter, const int octave)
 
 void MxmlWriter::writeTime(const unsigned int beats, const unsigned int beattype)
 {
-    m_out << "        <time>\n";
-    m_out << "          <beats>" << beats << "</beats>\n";
-    m_out << "          <beat-type>" << beattype << "</beat-type>\n";
-    m_out << "        </time>\n";
+    m_xml.writeStartElement("time");
+    m_xml.writeTextElement("beats", QString::number(beats));
+    m_xml.writeTextElement("beat-type", QString::number(beattype));
+    m_xml.writeEndElement();
 }
 
 
 //---------------------------------------------------------
-// writeTime - write time modification
+// writeTimeModification - write time modification
 //---------------------------------------------------------
 
 void MxmlWriter::writeTimeModification(const int actual, const int normal)
 {
     if (actual > 0 && normal > 0) {
-        m_out << "        <time-modification>\n";
-        m_out << "          <actual-notes>" << actual << "</actual-notes>\n";
-        m_out << "          <normal-notes>" << normal << "</normal-notes>\n";
-        m_out << "        </time-modification>\n";
+        m_xml.writeStartElement("time-modification");
+        m_xml.writeTextElement("actual-notes", QString::number(actual));
+        m_xml.writeTextElement("normal-notes", QString::number(normal));
+        m_xml.writeEndElement();
     }
 }
 
 
 //---------------------------------------------------------
-// writeClef - write tuplet start or stop
+// writeTuplet - write tuplet start or stop
 //---------------------------------------------------------
 
 void MxmlWriter::writeTuplet(TupletState state)
 {
     if (state == TupletState::START || state == TupletState::STOP) {
-        m_out << "        <notations>\n";
+        m_xml.writeStartElement("notations");
         if (state == TupletState::START) {
-            m_out << "          <tuplet type=\"start\"/>\n";
+            m_xml.writeStartElement("tuplet");
+            m_xml.writeAttribute("type", "start");
+            m_xml.writeEndElement();
         }
         if (state == TupletState::STOP) {
-            m_out << "          <tuplet type=\"stop\"/>\n";
+            m_xml.writeStartElement("tuplet");
+            m_xml.writeAttribute("type", "stop");
+            m_xml.writeEndElement();
         }
-        m_out << "        </notations>\n";
+        m_xml.writeEndElement();
     }
 }
 
@@ -402,7 +475,7 @@ void MxmlWriter::writeTuplet(TupletState state)
 void MxmlWriter::writeVoice(const bool hasMultipleVoices, const int voice)
 {
     if (hasMultipleVoices) {
-        m_out << "        <voice>" << voice << "</voice>\n";
+        m_xml.writeTextElement("voice", QString::number(voice));
     }
 }
 
@@ -413,24 +486,10 @@ void MxmlWriter::writeVoice(const bool hasMultipleVoices, const int voice)
 
 void MxmlWriter::writeWork(const QString& title, const QString& subtitle)
 {
-    m_out << "  <work>\n";
+    m_xml.writeStartElement("work");
     if (!subtitle.isEmpty()) {
-        m_out << "    <work-number>" << subtitle << "</work-number>\n";
+        m_xml.writeTextElement("work-number", subtitle);
     }
-    m_out << "    <work-title>" << title << "</work-title>\n";
-    m_out << "  </work>\n";
+    m_xml.writeTextElement("work-title", title);
+    m_xml.writeEndElement();
 }
-
-
-//---------------------------------------------------------
-// writeXmlHeader - write xml header
-//---------------------------------------------------------
-
-void MxmlWriter::writeXmlHeader()
-{
-    m_out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-          << "<!DOCTYPE score-partwise PUBLIC"
-          << " \"-//Recordare//DTD MusicXML 3.1 Partwise//EN\""
-          << " \"http://www.musicxml.org/dtds/partwise.dtd\">\n";
-}
-

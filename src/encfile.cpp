@@ -17,6 +17,11 @@
 /*  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.           */
 /*****************************************************************************/
 
+
+//---------------------------------------------------------
+// implementation of the classes representing an Encore file
+//---------------------------------------------------------
+
 #include <QtDebug>
 
 #include "encfile.h"

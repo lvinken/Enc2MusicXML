@@ -20,7 +20,11 @@
 #ifndef MXMLWRITER_H
 #define MXMLWRITER_H
 
+#include <QXmlStreamWriter>
+
 #include "commondefs.h"
+//#include "xmlwriter.h"
+
 
 //---------------------------------------------------------
 // the MusicXML file writer
@@ -30,18 +34,22 @@ class MxmlWriter
 {
 public:
     MxmlWriter();
-    void setDevice(QIODevice *device) { m_out.setDevice(device); }
+    void setDevice(QIODevice *device) { m_xml.setDevice(device); }
     void writeBackupForward(const int duration, const int voice);
     void writeBarlineLeft(const bool repeatStart, const bool endingStart, const bool barlineDblLeft, const QString& endingNumber);
     void writeBarlineRight(const bool repeatEnd, const bool endingStop, const bool barlineEnd, const bool barlineDbl, const int repeatAlternative);
+    void writeBegin();
     void writeClef(const int number, const QString& sign, const int line, const int octCh);
     void writeDivisions(const int divisions);
     void writeDots(const int dots);
-    void writeElement(const QString& indent, const QString& element);
-    void writeElement(const QString& indent, const QString& element, const int value);
-    void writeElement(const QString& indent, const QString& element, const QString& value);
-    void writeElementStart(const QString& indent, const QString& element);
-    void writeElementEnd(const QString& indent, const QString& element);
+    void writeElement(const QString& element);
+    void writeElement(const QString& element, const int value);
+    void writeElement(const QString& element, const QString& value);
+    void writeElementStart(const QString& element);
+    void writeElementStartWithAttribute(const QString& element, const QString& attr, const int value);
+    void writeElementStartWithAttribute(const QString& element, const QString& attr, const QString& value);
+    void writeElementEnd();
+    void writeEnd();
     void writeGrace(const GraceType type);
     void writeIdentification(const QString& author, const QString& lyricist, const QString& rights, const QString& software);
     void writeKey(const int fifths);
@@ -56,10 +64,9 @@ public:
     void writeTimeModification(const int actual, const int normal);
     void writeTuplet(TupletState state);
     void writeVoice(const bool hasMultipleVoices, const int voice);
-    void writeXmlHeader();
     void writeWork(const QString& title, const QString& subtitle);
 private:
-    QTextStream m_out;
+    QXmlStreamWriter m_xml;
 };
 
 #endif // MXMLWRITER_H

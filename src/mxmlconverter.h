@@ -17,8 +17,8 @@
 /*  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.           */
 /*****************************************************************************/
 
-#ifndef MXMLCONVERT_H
-#define MXMLCONVERT_H
+#ifndef MXMLCONVERTER_H
+#define MXMLCONVERTER_H
 
 #include "commondefs.h"
 #include "mxmlwriter.h"
@@ -46,13 +46,15 @@ class MxmlConverter
 {
 public:
     MxmlConverter(const EncFile& ef);
-    bool hasMultipleVoices(const int partNr) const { return m_voicesPerPart.at(partNr) > 1; }
     void convertEncToMxml();
+private:
+    bool hasMultipleVoices(const int partNr) const { return m_voicesPerPart.at(partNr) > 1; }
     void attributes(const int partNr);
     void barlineLeft(const int partNr, const size_t measureNr);
     void barlineRight(const int partNr, const size_t measureNr);
     void clefs(const int partNr);
     void identification();
+    void initVoicesPerPart();
     void key();
     void keyChange(const EncMeasureElemKeyChange* keyCh);
     void measure(const int partNr, const size_t measureNr);
@@ -65,11 +67,9 @@ public:
     void scorePart(const int n, const EncInstrument& instr);
     void time();
     void work();
-private:
-    void initVoicesPerPart();
     const EncFile& m_ef;
     MxmlWriter m_writer;
     std::vector<std::size_t> m_voicesPerPart;
 };
 
-#endif // MXMLCONVERT_H
+#endif // MXMLCONVERTER_H

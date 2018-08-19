@@ -20,6 +20,11 @@
 #ifndef ENCFILE_H
 #define ENCFILE_H
 
+
+//---------------------------------------------------------
+// definition of the classes representing an Encore file
+//---------------------------------------------------------
+
 #include <vector>
 
 #include <QDataStream>
