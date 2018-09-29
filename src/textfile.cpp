@@ -758,9 +758,13 @@ void TextFile::writeTitle()
 
 void TextFile::writeText()
 {
+    const EncText& txt = m_ef.text();
     std::cout
             << "---- TEKSTOJ ----" << "\n"
-            << "  --> Kiom: " << (m_ef.text().m_varsize == 8 ? "0" : "???") << "\n"
+            << "  --> Kiom: " << txt.m_texts.size() << "\n";
+    for (unsigned int i = 0; i < txt.m_texts.size(); ++i)
+        std::cout << "  Teksto " << i << " : " << qPrintable(txt.m_texts.at(i)) << "\n";
+    std::cout
             << "\n";
 }
 
@@ -854,11 +858,11 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
         const auto& lsd = line.lineStaffData().at(note->m_staffIdx);
         const bool isPercClef = lsd.m_clef== clefType::PERC;
         const bool isRhythmStaff = lsd.m_staffType == staffType::RHYTHM;
-        quint8 adorno = 0xFF;
+        auto adorno = articulationType::UNDEFINED;
         if (note->m_dotControl & 0x80)
-            adorno = note->m_articulationUp;
+            adorno = note->articulationUp();
         else if (note->m_dotControl & 0x40)
-            adorno = note->m_articulationDown;
+            adorno = note->articulationDown();
         std::cout
                 << " "
                 << (isPercClef ? enc_lily_vpoz_frape (note->m_position)
@@ -867,7 +871,7 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
                 << ((note->m_grace1 & 0x30) > 0x10 ? "!" : "")
                 << enc_lily_punkto(note->m_dotControl & 3)
                 << enc_lily_opeco(note->m_tuplet)
-                << enc_lily_adorno(adorno)
+                << enc_lily_adorno(static_cast<quint8>(adorno))
                 << " [" << static_cast<int>(note->m_xoffset) << "]"
                 << " (vocho: " << static_cast<int>(note->m_voice) << ")"
                 << "\n";
@@ -882,7 +886,7 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
     else if (const EncMeasureElemOrnament* const orna = dynamic_cast<const EncMeasureElemOrnament* const>(elem)) {
         std::cout
                 << " "
-                << enc_lily_simbolo(orna->m_tipo, orna->m_speguleco)
+                << enc_lily_simbolo(static_cast<quint8>(orna->type()), orna->m_speguleco)
                 << " [0;" << static_cast<int>(orna->m_xoffset)
                 << " -> " << static_cast<int>(orna->m_al_mezuro)
                 << ";" << static_cast<int>(orna->m_xoffset2)

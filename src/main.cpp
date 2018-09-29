@@ -24,6 +24,7 @@
 #include <QtCore/QCommandLineOption>
 #include <QtDebug>
 
+#include "analysisfile.h"
 #include "encfile.h"
 #include "mxmlconverter.h"
 #include "textfile.h"
@@ -50,7 +51,7 @@ int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
     QCoreApplication::setApplicationName("Enc2MusicXML");
-    QCoreApplication::setApplicationVersion("0.4.2");
+    QCoreApplication::setApplicationVersion("0.5");
 
     QCommandLineParser clp;
     clp.setApplicationDescription("Enc2MusicXML converts Encore files to MusicXML.");
@@ -59,15 +60,25 @@ int main(int argc, char *argv[])
     clp.addOptions({
                        {{"a", "analyse"},
                         QCoreApplication::translate("main", "Analyse file(s).")},
+                       {{"d", "dump"},
+                        QCoreApplication::translate("main", "Dump file(s). Similar to enc2ly's --dump option.")},
                        {{"m", "convert-to-MusicXML"},
                         QCoreApplication::translate("main", "Convert file(s) to MusicXML format.")},
                    });
     clp.process(app);
-    if (clp.isSet("h") || (!clp.isSet("a") && !clp.isSet("m"))) {
+    if (clp.isSet("h") || (!clp.isSet("a") && !clp.isSet("d") && !clp.isSet("m"))) {
         clp.showHelp();
         Q_UNREACHABLE();
     }
     if (clp.isSet("a")) {
+        for (const auto& s : clp.positionalArguments()) {
+            EncFile ef;
+            read_file(s, ef);
+            AnalysisFile af(ef);
+            af.write();
+        }
+    }
+    if (clp.isSet("d")) {
         for (const auto& s : clp.positionalArguments()) {
             EncFile ef;
             read_file(s, ef);

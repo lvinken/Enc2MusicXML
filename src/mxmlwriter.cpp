@@ -252,6 +252,18 @@ void MxmlWriter::writeEnd()
 
 
 //---------------------------------------------------------
+// writeGrace - write fermata
+//---------------------------------------------------------
+
+void MxmlWriter::writeFermata()
+{
+    m_xml.writeStartElement("notations");
+    m_xml.writeEmptyElement("fermata");
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
 // writeGrace - write grace
 //---------------------------------------------------------
 
@@ -322,6 +334,27 @@ void MxmlWriter::writeKeyChange(const int fifths)
 {
     m_xml.writeStartElement("attributes");
     writeKey(fifths);
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
+// writeMetronome - write metronome
+//---------------------------------------------------------
+
+void MxmlWriter::writeMetronome(const QString& beatUnit, const int beatUnitDots, const int perMinute)
+{
+    m_xml.writeStartElement("direction");
+    m_xml.writeAttribute("placement", "above");
+    m_xml.writeStartElement("direction-type");
+    m_xml.writeStartElement("metronome");
+    m_xml.writeTextElement("beat-unit", beatUnit);
+    for (int i = 0; i < beatUnitDots; ++i) {
+        m_xml.writeEmptyElement("beat-unit-dot");
+    }
+    m_xml.writeTextElement("per-minute", QString::number(perMinute));
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
     m_xml.writeEndElement();
 }
 
@@ -418,6 +451,46 @@ void MxmlWriter::writePitch(const char step, const int alter, const int octave)
 
 
 //---------------------------------------------------------
+// writeSlur - write slur
+//---------------------------------------------------------
+
+void MxmlWriter::writeSlur(const StartStop startstop, const int number)
+{
+    m_xml.writeStartElement("notations");
+    m_xml.writeStartElement("slur");
+    m_xml.writeAttribute("type", startstop == StartStop::START ? "start" : "stop");
+    m_xml.writeAttribute("number", QString::number(number));
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
+}
+
+//---------------------------------------------------------
+// writeTie - write tie
+//---------------------------------------------------------
+
+void MxmlWriter::writeTie(const StartStop startstop)
+{
+    m_xml.writeStartElement("tie");
+    m_xml.writeAttribute("type", startstop == StartStop::START ? "start" : "stop");
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
+// writeTied - write tied
+//---------------------------------------------------------
+
+void MxmlWriter::writeTied(const StartStop startstop)
+{
+    m_xml.writeStartElement("notations");
+    m_xml.writeStartElement("tied");
+    m_xml.writeAttribute("type", startstop == StartStop::START ? "start" : "stop");
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
 // writeTime - write time signature
 //---------------------------------------------------------
 
@@ -477,6 +550,45 @@ void MxmlWriter::writeVoice(const bool hasMultipleVoices, const int voice)
     if (hasMultipleVoices) {
         m_xml.writeTextElement("voice", QString::number(voice));
     }
+}
+
+
+//---------------------------------------------------------
+// writeWedge - write wedge
+//---------------------------------------------------------
+
+void MxmlWriter::writeWedge(const WedgeType wedgetype, const int number)
+{
+    QString type;
+    switch (wedgetype) {
+    case WedgeType::CRESCENDO: type = "crescendo"; break;
+    case WedgeType::DIMINUENDO: type = "diminuendo"; break;
+    case WedgeType::STOP: type = "stop"; break;
+    default: /* TBD */; break;
+    }
+
+    m_xml.writeStartElement("direction");
+    m_xml.writeStartElement("direction-type");
+    m_xml.writeStartElement("wedge");
+    m_xml.writeAttribute("type", type);
+    m_xml.writeAttribute("number", QString::number(number));
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
+// writeWords - write words
+//---------------------------------------------------------
+
+void MxmlWriter::writeWords(const QString& words)
+{
+    m_xml.writeStartElement("direction");
+    m_xml.writeStartElement("direction-type");
+    m_xml.writeTextElement("words", words);
+    m_xml.writeEndElement();
+    m_xml.writeEndElement();
 }
 
 

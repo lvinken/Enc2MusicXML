@@ -457,6 +457,7 @@ bool EncMeasureElem::read(QDataStream& data)
     data >> m_size;
     data >> m_staffIdx;
     m_staffIdx &= 0x3F;
+
     qDebug()
             << "m_tick" << m_tick
             << "m_type" << m_type
@@ -464,6 +465,7 @@ bool EncMeasureElem::read(QDataStream& data)
             << "m_size" << m_size
             << "m_staffIdx" << m_staffIdx
                ;
+
     return true;
 }
 
@@ -481,8 +483,10 @@ EncMeasureElemNone::EncMeasureElemNone(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemNone::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemNone::read()";
+
     EncMeasureElem::read(data);
     data.skipRawData(m_size - 5);     // skip to end
+
     return true;
 }
 
@@ -500,8 +504,10 @@ EncMeasureElemClef::EncMeasureElemClef(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemClef::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemClef::read()";
+
     EncMeasureElem::read(data);
     data.skipRawData(m_size - 5);     // skip to end
+
     return true;
 }
 
@@ -519,14 +525,17 @@ EncMeasureElemKeyChange::EncMeasureElemKeyChange(quint16 tick, quint8  type, qui
 bool EncMeasureElemKeyChange::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemKeyChange::read()";
+
     EncMeasureElem::read(data);
     data >> m_tipo;
     data.skipRawData(m_size - 5 - 1); // skip to end
     m_xoffset = 0;                    // like in enc2ly
+
     qDebug()
             << "m_tipo" << m_tipo
             << "m_xoffset" << m_xoffset
                ;
+
     return true;
 }
 
@@ -544,15 +553,22 @@ EncMeasureElemTie::EncMeasureElemTie(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemTie::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemTie::read()";
+
     EncMeasureElem::read(data);
     data.skipRawData(5);
     data >> m_xoffset;
     data.skipRawData(m_size - 5 - 6);   // skip to end
+
     qDebug()
+            << "m_tick" << m_tick
             << "m_xoffset" << m_xoffset
+            << "m_voice" << m_voice
+            << "m_staffIdx" << m_staffIdx
                ;
+
     return true;
 }
+
 
 //---------------------------------------------------------
 // EncMeasureElemBeam
@@ -568,12 +584,15 @@ EncMeasureElemBeam::EncMeasureElemBeam(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemBeam::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemBeam::read()";
+
     EncMeasureElem::read(data);
     data.skipRawData(m_size - 5);     // skip to end
     m_xoffset = 255;                  // faked like in enc2ly
+
     qDebug()
             << "m_xoffset" << m_xoffset
                ;
+
     return true;
 }
 
@@ -591,6 +610,7 @@ EncMeasureElemOrnament::EncMeasureElemOrnament(quint16 tick, quint8  type, quint
 bool EncMeasureElemOrnament::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemOrnament::read()";
+
     EncMeasureElem::read(data);
     data >> m_tipo;
     data.skipRawData(4);
@@ -602,16 +622,28 @@ bool EncMeasureElemOrnament::read(QDataStream& data)
     data.skipRawData(5);
     data >> m_speguleco;
     m_speguleco &= 3;
-    data.skipRawData(m_size - 5 - 22);     // skip to end
+    data.skipRawData(1);
+    data >> m_noto;
+    data.skipRawData(1);
+    data >> m_tempo;
+    data.skipRawData(1);
+    data >> m_tind;
+    data.skipRawData(m_size - 5 - 28);     // skip to end
+
     qDebug()
             << "m_tipo" << m_tipo
             << "m_xoffset" << m_xoffset
             << "m_al_mezuro" << m_al_mezuro
             << "m_xoffset2" << m_xoffset2
             << "m_speguleco" << m_speguleco
+            << "m_noto" << m_noto
+            << "m_tempo" << m_tempo
+            << "m_tind" << m_tind
                ;
+
     return true;
 }
+
 
 //---------------------------------------------------------
 // EncMeasureElemLyric
@@ -627,8 +659,10 @@ EncMeasureElemLyric::EncMeasureElemLyric(quint16 tick, quint8  type, quint8 voic
 bool EncMeasureElemLyric::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemLyric::read()";
+
     EncMeasureElem::read(data);
     data.skipRawData(m_size - 5);     // skip to end
+
     return true;
 }
 
@@ -646,6 +680,7 @@ EncMeasureElemChord::EncMeasureElemChord(quint16 tick, quint8  type, quint8 voic
 bool EncMeasureElemChord::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemChord::read()";
+
     EncMeasureElem::read(data);
     data >> m_toniko;
     data >> m_tipo;
@@ -676,6 +711,7 @@ bool EncMeasureElemChord::read(QDataStream& data)
     }
     else
         data.skipRawData(m_size - 5 - 9); // skip to end
+
     qDebug()
             << "m_toniko" << m_toniko
             << "m_tipo" << m_tipo
@@ -684,6 +720,7 @@ bool EncMeasureElemChord::read(QDataStream& data)
             << "m_baso" << m_baso
             << "m_teksto" << m_teksto
                ;
+
     return true;
 }
 
@@ -701,6 +738,7 @@ EncMeasureElemNote::EncMeasureElemNote(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemNote::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemNote::read()";
+
     EncMeasureElem::read(data);
     data >> m_faceValue;
     data >> m_grace1;
@@ -722,6 +760,7 @@ bool EncMeasureElemNote::read(QDataStream& data)
     data.skipRawData(1);
     data >> m_articulationDown;
     data.skipRawData(m_size - 27);     // skip to end
+
     qDebug()
             << "m_faceValue" << m_faceValue
             << "m_grace1" << m_grace1
@@ -774,6 +813,7 @@ EncMeasureElemRest::EncMeasureElemRest(quint16 tick, quint8  type, quint8 voice)
 bool EncMeasureElemRest::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemRest::read()";
+
     EncMeasureElem::read(data);
     data >> m_faceValue;
     data.skipRawData(4);
@@ -782,14 +822,17 @@ bool EncMeasureElemRest::read(QDataStream& data)
     data >> m_tuplet;
     data >> m_dotControl;
     data.skipRawData(m_size - 10 - 5);     // skip to end
+
     qDebug()
             << "m_faceValue" << m_faceValue
             << "m_xoffset" << m_xoffset
             << "m_tuplet" << m_tuplet
             << "m_dotControl" << m_dotControl
                ;
+
     return true;
 }
+
 
 //---------------------------------------------------------
 // EncMeasureElemUnknown
@@ -805,8 +848,10 @@ EncMeasureElemUnknown::EncMeasureElemUnknown(quint16 tick, quint8  type, quint8 
 bool EncMeasureElemUnknown::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemUnknown::read()";
+
     EncMeasureElem::read(data);
     data.skipRawData(m_size - 5);     // skip to end
+
     return true;
 }
 
@@ -815,12 +860,74 @@ bool EncMeasureElemUnknown::read(QDataStream& data)
 // EncText
 //---------------------------------------------------------
 
+// read a single text from a TEXT block
+// structure is a 16 byte header, starting with a two byte size
+// size is the number of bytes remaining in the header plus the string
+// return text read
+
+static QString readSingleText(QDataStream& data)
+{
+    quint16 size;
+    data >> size;
+    // skip remainder of header
+    data.skipRawData(14);
+
+    // read the text
+    QString text;
+    quint8 b { 0 };
+    bool done { false };
+
+    for (unsigned int i = 0; i < (size - 14); ++i) {
+        data >> b;
+        if (b == 0 || b == 4) {
+            done = true;
+        }
+        if (!done) {
+            text += QChar(b);
+        }
+    }
+
+    return text;
+}
+
+
 bool EncText::read(QDataStream& data, const quint32 var_size)
 {
+    qDebug() << "EncText::read()";
+
     m_varsize = var_size;
-    data.skipRawData(var_size);
+
+    quint16 ntexts { 0 };
+    data.skipRawData(2);
+    data >> ntexts;
+    data.skipRawData(4);
+
+    for (int i = 0; i < ntexts; ++i) {
+        m_texts.push_back(readSingleText(data));
+    }
+
+    QString texts;
+    for (const auto& s : m_texts) {
+        if (!texts.isEmpty()) {
+            texts += " ";
+        }
+        texts += "'";
+        texts += s;
+        texts += "'";
+    }
+
+    qDebug()
+            << "ntexts" << ntexts
+            << "m_texts" << texts
+               ;
+
     return true;
 }
+
+
+//---------------------------------------------------------
+// EncTitle
+//---------------------------------------------------------
 
 
 // read a single text item in a TEXT block
@@ -868,10 +975,6 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
     return item;
 }
 
-
-//---------------------------------------------------------
-// EncTitle
-//---------------------------------------------------------
 
 bool EncTitle::read(QDataStream& data, const quint32 var_size, const CharSize charsize)
 {
@@ -941,10 +1044,10 @@ static void addSpannerEnds(MeasureVec& mv)
         for (const auto elem : meas.measureElems()) {
             if (const EncMeasureElemOrnament* const orna = dynamic_cast<const EncMeasureElemOrnament* const>(elem)) {
                 //qDebug() << "orna type" << static_cast<unsigned int>(orna->m_tipo);
-                if (orna->m_tipo == 0x21) { // ST_LIGARKO
+                if (orna->type() == ornamentType::SLURSTART) { // ST_LIGARKO
                     EncMeasureElemOrnament* end_orna = new EncMeasureElemOrnament(0, 0, 0);
                     *end_orna = *orna;
-                    end_orna->m_tipo = 0x41; // ST_LIGARKOFINO
+                    end_orna->setType(ornamentType::SLURSTOP); // ST_LIGARKOFINO
                     end_orna->m_xoffset = orna->m_xoffset2;
                     //print_orna(orna);
                     //print_orna(end_orna);
@@ -952,10 +1055,10 @@ static void addSpannerEnds(MeasureVec& mv)
                     //qDebug() << "endMeas" << endMeas;
                     mevv.at(endMeas).push_back(end_orna);
                 }
-                else if (orna->m_tipo == 0x1D) { // ST_DINAMIKO
+                else if (orna->type() == ornamentType::WEDGESTART) { // ST_DINAMIKO
                     EncMeasureElemOrnament* end_orna = new EncMeasureElemOrnament(0, 0, 0);
                     *end_orna = *orna;
-                    end_orna->m_tipo = 0x4D; // ST_DINAMIKOFINO
+                    end_orna->setType(ornamentType::WEDGESTOP); // ST_DINAMIKOFINO
                     end_orna->m_xoffset = orna->m_xoffset2;
                     //print_orna(orna);
                     //print_orna(end_orna);

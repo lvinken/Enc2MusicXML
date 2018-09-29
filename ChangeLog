@@ -1,3 +1,13 @@
+Version 0.5 (2018-09-29)
+
+- support words (staff text)
+- support tempo marker
+- support wedge
+- support tie
+- support slur
+- support fermata
+- add alternative dump format
+
 Version 0.4.2 (2018-08-19)
 
 - MusicXML writer refactoring (no functional changes)

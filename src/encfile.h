@@ -259,19 +259,33 @@ public:
 };
 
 
+enum class ornamentType : quint8 {
+    NONE        = 0,
+    WEDGESTART  = 0x1D,
+    STAFFTEXT   = 0x1E,
+    SLURSTART   = 0x21,
+    TEMPO       = 0x32,
+    SLURSTOP    = 0x41,
+    WEDGESTOP   = 0x4D
+};
+
+
 class EncMeasureElemOrnament : public EncMeasureElem
 {
 public:
     EncMeasureElemOrnament(quint16 tick, quint8  type, quint8 voice);
     bool read(QDataStream& data);
-    quint8  m_tipo              { 0 };  // offset  5 ??
+    ornamentType type() const { return static_cast<ornamentType>(m_tipo); }
+    void setType(const ornamentType type) { m_tipo = static_cast<quint8>(type); }
     // check:
     quint8  m_al_mezuro         { 0 };  // offset 18
     quint8  m_xoffset2          { 0 };  // offset 20                ENCORE_OBJEKTO::al_kie
     quint8  m_speguleco         { 0 };  // offset 26
     quint8  m_noto              { 0 };  // offset 28
     quint8  m_tempo             { 0 };  // offset 30
-    quint8  m_tindo             { 0 };  // offset 32
+    quint8  m_tind              { 0 };  // offset 32
+private:
+    quint8  m_tipo              { 0 };  // offset  5 ??
 };
 
 
@@ -283,12 +297,21 @@ public:
 };
 
 
+enum class articulationType : quint8 {
+    NONE        = 0,
+    FERMATA     = 0x20,
+    UNDEFINED   = 0xFF
+};
+
+
 class EncMeasureElemNote : public EncMeasureElem
 {
 public:
     EncMeasureElemNote(quint16 tick, quint8  type, quint8 voice);
     bool read(QDataStream& data);
     int actualNotes() const { return m_tuplet >> 4; }
+    articulationType articulationUp() const { return static_cast<articulationType>(m_articulationUp); }
+    articulationType articulationDown() const { return static_cast<articulationType>(m_articulationDown); }
     int normalNotes() const { return m_tuplet & 0x0F; }
     GraceType graceType() const;
     quint8  m_faceValue         { 0 };  // offset  5 (WithDuration) atr.noto.rapido
@@ -302,6 +325,7 @@ public:
     quint8  m_velocity          { 0 };  // offset 19
     quint8  m_options           { 0 };  // offset 20
     quint8  m_alterationGlyph   { 0 };  // offset 21
+private:
     quint8  m_articulationUp    { 0 };  // offset 24
     quint8  m_articulationDown  { 0 };  // offset 26
 };
@@ -409,6 +433,7 @@ public:
     EncText() = default;
     bool read(QDataStream& data, const quint32 var_size);
     quint32  m_varsize          { 0 };
+    std::vector<QString> m_texts;
 };
 
 

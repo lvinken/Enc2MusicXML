@@ -30,7 +30,7 @@ rwtest() {
 rwtestAll() {
       for f in `ls *.enc | sort`; do
             NAME=`basename $f .enc`
-            rwtest $1 $NAME txt a
+            rwtest $1 $NAME txt d
             if [ -e $NAME.ref.xml ]
             then
                   rwtest $1 $NAME xml m

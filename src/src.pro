@@ -8,14 +8,18 @@ TEMPLATE = app
 CONFIG  += console
 CONFIG  -= app_bundle
 
-SOURCES += encfile.cpp \
+SOURCES += analysisfile.cpp \
+           encfile.cpp \
            main.cpp \
            mxmlconverter.cpp \
            mxmlwriter.cpp \
+           noteconnector.cpp \
            textfile.cpp
 
-HEADERS += commondefs.h \
+HEADERS += analysisfile.h \
+           commondefs.h \
            encfile.h \
            mxmlconverter.h \
            mxmlwriter.h \
+           noteconnector.h \
            textfile.h

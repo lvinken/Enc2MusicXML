@@ -10,10 +10,10 @@ failures=0
 
 rwtest() {
       echo -n "testing $2";
-      REF=$2.txt
-      RES=$2.out
+      REF=$2.ref.txt
+      RES=$2.out.txt
       SRC=$2.enc
-      $1 -a $SRC >$RES 2> /dev/null
+      $1 -d $SRC >$RES 2> /dev/null
       if diff -q $REF $RES &> /dev/null; then
             echo -e "\r\t\t\t\t\t\t...OK";
       else

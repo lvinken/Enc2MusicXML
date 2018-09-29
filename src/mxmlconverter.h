@@ -22,6 +22,7 @@
 
 #include "commondefs.h"
 #include "mxmlwriter.h"
+#include "noteconnector.h"
 
 //---------------------------------------------------------
 // the tuplet state handler deduces tuplet start and stop notes
@@ -68,6 +69,7 @@ private:
     void time();
     void work();
     const EncFile& m_ef;
+    const NoteConnector m_nc;
     MxmlWriter m_writer;
     std::vector<std::size_t> m_voicesPerPart;
 };

@@ -20,6 +20,8 @@
 #ifndef TEXTFILE_H
 #define TEXTFILE_H
 
+#include "encfile.h"
+
 
 //---------------------------------------------------------
 // the analysis file writer

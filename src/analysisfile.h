@@ -17,56 +17,31 @@
 /*  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.           */
 /*****************************************************************************/
 
-#ifndef COMMONDEFS_H
-#define COMMONDEFS_H
+#ifndef ANALYSISFILE_H
+#define ANALYSISFILE_H
+
+#include "encfile.h"
 
 
 //---------------------------------------------------------
-// common definitions
+// the analysis file writer
 //---------------------------------------------------------
 
-
-//---------------------------------------------------------
-// the types of grace notes
-//---------------------------------------------------------
-
-enum class StartStop : char {
-    START,
-    STOP
+class AnalysisFile
+{
+public:
+    AnalysisFile(const EncFile& ef);
+    void write();
+private:
+    void writeHeader();
+    void writeTitle();
+    void writeText();
+    void writeInstruments();
+    void writeLines();
+    void writeLineStaffData(const EncLine& line);
+    void writeMeasures();
+    void writeMeasureElem(const EncMeasureElem* const elem);
+    const EncFile& m_ef;
 };
 
-
-//---------------------------------------------------------
-// the types of grace notes
-//---------------------------------------------------------
-
-enum class GraceType : char {
-    NORMALNOTE,
-    ACCIACCATURA,
-    APPOGGIATURA
-};
-
-
-//---------------------------------------------------------
-// the states of a note in a tuplet
-//---------------------------------------------------------
-
-enum class TupletState : char {
-    NONE,
-    START,
-    MID,
-    STOP
-};
-
-
-//---------------------------------------------------------
-// the types of wedge endpoints
-//---------------------------------------------------------
-
-enum class WedgeType : char {
-    CRESCENDO,
-    DIMINUENDO,
-    STOP
-};
-
-#endif // COMMONDEFS_H
+#endif // ANALYSISFILE_H

@@ -254,7 +254,7 @@ void MxmlConverter::initVoicesPerPart()
 //---------------------------------------------------------
 
 MxmlConverter::MxmlConverter(const EncFile& ef)
-    : m_ef(ef)
+    : m_ef(ef), m_nc(ef)
 {
     initVoicesPerPart();
 }
@@ -759,6 +759,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                         tick = elem->m_tick;
                     }
                     */
+
                     const bool isChord = notesAreInChord(prevnote, curnote);
                     if (isChord) {
                         qDebug() << "xxx_chord"
@@ -767,9 +768,36 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                                  << "elem->m_tick" << elem->m_tick
                                     ;
                     }
+
+                    const auto direction = m_nc.direction(curnote);
+                    if (direction
+                            && direction->type() == ornamentType::STAFFTEXT
+                            && direction->m_tind < m_ef.text().m_texts.size()) {
+                        m_writer.writeWords(m_ef.text().m_texts.at(direction->m_tind));
+                    }
+                    else if (direction
+                             && direction->type() == ornamentType::TEMPO) {
+                        m_writer.writeMetronome(faceValue2xml((direction->m_noto & 0x0F) + 1),
+                                                (direction->m_noto & 0x80) ? 1 : 0,
+                                                direction->m_tempo);
+                    }
+
+                    const auto wedgeStart = m_nc.wedgeStart(curnote);
+                    const auto wedgeStop = m_nc.wedgeStop(curnote);
+
+                    if (wedgeStart) {
+                        m_writer.writeWedge((wedgeStart->m_speguleco & 0x01)
+                                            ? WedgeType::DIMINUENDO
+                                            : WedgeType::CRESCENDO);
+                    }
+
                     note(curnote, partNr, th, isChord);
                     duration = isChord ? 0 : durationNote(curnote);
                     prevnote = curnote;
+
+                    if (wedgeStop) {
+                        m_writer.writeWedge(WedgeType::STOP);
+                    }
                 }
                 else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
                     /*
@@ -838,6 +866,16 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
         m_writer.writeElement("duration", durationNote(note));
     }
 
+    const bool tieStart = m_nc.tieStart(note);
+    const bool tieStop = m_nc.tieStop(note);
+
+    if (tieStop) {
+        m_writer.writeTie(StartStop::STOP);
+    }
+    if (tieStart) {
+        m_writer.writeTie(StartStop::START);
+    }
+
     m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
     m_writer.writeElement("type", faceValue2xml(note->m_faceValue & 0x0F));
     m_writer.writeDots(note->m_dotControl & 3);
@@ -846,6 +884,31 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);
+
+
+    const auto slurstart = m_nc.slurStart(note);
+    const auto slurstop = m_nc.slurStop(note);
+
+    // ignore overlapping slurs for now
+    if (slurstop) {
+        m_writer.writeSlur(StartStop::STOP);
+    }
+    if (slurstart) {
+        m_writer.writeSlur(StartStop::START);
+    }
+
+    if (tieStop) {
+        m_writer.writeTied(StartStop::STOP);
+    }
+    if (tieStart) {
+        m_writer.writeTied(StartStop::START);
+    }
+
+    // articulations (for the time being only fermata)
+    if (note->articulationUp() == articulationType::FERMATA) {
+        m_writer.writeFermata();
+    }
+
     m_writer.writeElementEnd();
 }
 
