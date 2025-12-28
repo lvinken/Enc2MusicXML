@@ -61,6 +61,8 @@ class EncHeader
 public:
     EncHeader();
     bool read(QDataStream& data);
+    bool isOldFormat() const { return m_chuMagio == 0xC2; }
+    bool isVeryOldFormat() const { return m_chuMagio == 0xA6; }
     // TODO private:
     QString m_magic;                     // ENCORE_STRUKTURO::magio
     quint8  m_chuMagio          { 0 };   // ENCORE_STRUKTURO::chu_magio
@@ -399,7 +401,7 @@ class EncMeasure                        // ENCORE_MEZURO
 {
 public:
     EncMeasure() = default;
-    bool read(QDataStream& data, const quint32 var_size);
+    bool read(QDataStream& data, const quint32 var_size, bool oldFormat = false, bool veryOldFormat = false);
     const MeasureElemVec& measureElems() const { return m_measureElems; }
     void push_back(EncMeasureElem* elem) { m_measureElems.push_back(elem); }
     barlineType barTypeStart() const { return static_cast<barlineType>(m_barTypeStart); }

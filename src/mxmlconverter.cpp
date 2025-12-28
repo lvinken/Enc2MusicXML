@@ -291,7 +291,8 @@ void MxmlConverter::attributes(const int partNr)
     m_writer.writeDivisions(240);
     key();
     time();
-    m_writer.writeStaves(m_ef.staves().at(partNr).m_nstaves);
+    const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
+    m_writer.writeStaves(nstaves);
     clefs(partNr);
     m_writer.writeElementEnd();
 }
@@ -402,10 +403,13 @@ void MxmlConverter::clefs(const int partNr)
 {
     // TBD (too) simple implementation: use clef of first measure only
     const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures) {
-        const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    if (hasMeasures && m_ef.lines().size() > 0) {
+        const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
         const auto& encline = m_ef.lines().at(0);   // first system
         for (int i = 0; i < nstaves; ++i) {
+            if (static_cast<size_t>(partNr + i) >= encline.lineStaffData().size()) {
+                break;
+            }
             const auto& data = encline.lineStaffData().at(partNr + i);
             const auto ct = data.m_clef;
             QString sign;
@@ -467,6 +471,10 @@ int encKeyToFifths(unsigned int key)
         //   c   f  bf  ef  af  df  gf  cf  g   d   a   e   b  fs  cs
         /**/ 0, -1, -2, -3, -4, -5, -6, -7, 1,  2,  3,  4,  5,  6,  7
     };
+    if (key >= v.size()) {
+        qDebug() << "encKeyToFifths: key out of range:" << key;
+        return 0;
+    }
     return v.at(key);
 }
 
@@ -479,11 +487,13 @@ int encKeyToFifths(unsigned int key)
 void MxmlConverter::key()
 {
     const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures) {
+    if (hasMeasures && m_ef.lines().size() > 0) {
         const auto& line = m_ef.lines().at(0);
-        const auto& data = line.lineStaffData().at(0);
-        quint8 kcType = data.m_key;
-        m_writer.writeKey(encKeyToFifths(kcType));
+        if (line.lineStaffData().size() > 0) {
+            const auto& data = line.lineStaffData().at(0);
+            quint8 kcType = data.m_key;
+            m_writer.writeKey(encKeyToFifths(kcType));
+        }
     }
 }
 
@@ -664,9 +674,10 @@ static QString encRepeatToWords(const repeatType repeat)
 static bool notesAreInChord(const EncMeasureElemNote* const note1,
                             const EncMeasureElemNote* const note2)
 {
+    // Notes are in a chord if they have the same tick
+    // x_offset is just visual positioning and should not affect chord detection
     return note1 && note2
-            && note1->m_tick == note2->m_tick
-            && note1->m_xoffset == note2->m_xoffset;
+            && note1->m_tick == note2->m_tick;
 }
 
 
@@ -845,11 +856,13 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     // TBD (too) simple implementation: use keysig of first staff of first measure only
     // TODO: remove duplicate code
     const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures) {
+    if (hasMeasures && m_ef.lines().size() > 0) {
         const auto& line = m_ef.lines().at(0);
-        const auto& data = line.lineStaffData().at(0);
-        quint8 kcType = data.m_key;
-        fifths = encKeyToFifths(kcType);
+        if (line.lineStaffData().size() > 0) {
+            const auto& data = line.lineStaffData().at(0);
+            quint8 kcType = data.m_key;
+            fifths = encKeyToFifths(kcType);
+        }
     }
     midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), fifths, step, alter, octave);
     m_writer.writeElementStart("note");
@@ -880,7 +893,7 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     m_writer.writeElement("type", faceValue2xml(note->m_faceValue & 0x0F));
     m_writer.writeDots(note->m_dotControl & 3);
     m_writer.writeTimeModification(note->actualNotes(), note->normalNotes());
-    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);
@@ -981,7 +994,7 @@ void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr,
     m_writer.writeElement("type", faceValue2xml(rest->m_faceValue & 0x0F));
     m_writer.writeDots(rest->m_dotControl & 3);
     m_writer.writeTimeModification(rest->actualNotes(), rest->normalNotes());
-    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
     const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);

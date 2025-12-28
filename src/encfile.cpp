@@ -205,7 +205,7 @@ bool EncInstrument::read(QDataStream& data, const quint32 var_size)
         if (charSize() == CharSize::ONE_BYTE) {
             quint8 b;
             data >> b;
-            ch = QChar(b);
+            ch = QChar(char16_t(b));
             nread += 1;
         }
         else if (charSize() == CharSize::TWO_BYTES) {
@@ -342,23 +342,38 @@ bool EncLine::read(QDataStream& data, const quint32 var_size, const int staffPer
 // EncMeasure
 //---------------------------------------------------------
 
-bool EncMeasure::read(QDataStream& data, const quint32 var_size)
+bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat, bool veryOldFormat)
 {
     m_varsize = var_size;
+
+    // Save start position for absolute positioning (like enc2ly does)
+    // Note: enc2ly's offsets include the 4-byte size field we already read
+    // So we subtract 4 from enc2ly offsets, or equivalently use (measStart - 4 + enc2ly_offset)
+    qint64 measStart = data.device()->pos();
+
+    // Read header using absolute offsets (based on enc2ly, adjusted by -4)
     data >> m_bpm;
     data >> m_timeSigGlyph;
     data.skipRawData(1);
     data >> m_beatTicks;
     data >> m_durTicks;
+
+    // enc2ly offset 0x0C -> measStart + 0x0C - 4 = measStart + 0x08
+    data.device()->seek(measStart + 0x08);
     data >> m_timeSigNum;
     data >> m_timeSigDen;
-    data.skipRawData(2);
+
+    // enc2ly offset 0x10 -> measStart + 0x0C
+    data.device()->seek(measStart + 0x0C);
     data >> m_barTypeStart;
     data >> m_barTypeEnd;
-    data >> m_repeatMarker;
+    data.skipRawData(1);
     data >> m_repeatAlternative;
-    data.skipRawData(9);
+
+    // enc2ly offset 0x1E -> measStart + 0x1A
+    data.device()->seek(measStart + 0x1A);
     data >> m_coda;
+
     qDebug()
             << "m_id" << m_id
             << "m_varsize" << m_varsize
@@ -374,12 +389,46 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
             << "m_repeatAlternative" << m_repeatAlternative
             << "m_coda" << m_coda
                ;
-    data.skipRawData(59 - 34);    // skip to end
+
+    // Elements start at different offsets depending on format version:
+    // - v0xA6 (very old): offset 0x3E, element spacing = size * 2
+    // - v0xC2/v0xC4: offset 0x36, element spacing = size
+    qint64 elemOffset = veryOldFormat ? 0x3E : 0x36;
+    data.device()->seek(measStart + elemOffset);
+
+    // Calculate end of measure block for bounds checking
+    qint64 measEnd = measStart + m_varsize + elemOffset;
+
     quint16 tick;
     data >> tick;
-    int elemSize = 0;
     qDebug() << "tick" << tick;
+
+    if (tick == 0xFFFF) {
+        // Measure has no elements, skip to end
+        data.device()->seek(measEnd);
+        return true;
+    }
+
+    // Safety: maximum number of elements to prevent infinite loops
+    const int MAX_ELEMENTS = 10000;
+    int elemCount = 0;
+
     while (tick != 0xFFFF) {
+        // Safety check: prevent infinite loops
+        if (++elemCount > MAX_ELEMENTS) {
+            qDebug() << "Too many elements, stopping to prevent infinite loop";
+            break;
+        }
+
+        // Safety check: don't read past measure bounds
+        if (data.device()->pos() >= measEnd - 2) {
+            qDebug() << "Reached end of measure block at pos" << data.device()->pos();
+            break;
+        }
+
+        // Save position where element starts (right before tick)
+        qint64 elemStart = data.device()->pos() - 2;  // -2 because we already read tick
+
         quint8 typeVoice;
         data >> typeVoice;
         qDebug() << "typeVoice" << typeVoice;
@@ -420,25 +469,52 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
         } else if (elemType(type) == elemType::UNKNOWN2) {
             elem = new EncMeasureElemUnknown(tick, type, voice);
         } else {
+            // Unknown element type - skip it using size field
+            quint8 elemSize;
+            data >> elemSize;
             qDebug()
                     << "filepos" << hexString(data.device()->pos() - 1)
-                    << "unsupported elemType" << type;
-            elem = new EncMeasureElemUnknown(tick, type, voice);
+                    << "skipping unsupported elemType" << type
+                    << "size" << elemSize;
+            if (elemSize > 3) {
+                data.device()->seek(elemStart + elemSize);
+            } else {
+                qDebug() << "Invalid element size, skipping to end of measure";
+                break;
+            }
+            data >> tick;
+            qDebug() << "tick" << tick;
+            continue;
         }
         //qDebug() << "elem:" << elem;
         elem->read(data);
         if (elemType(type) != elemType::NONE)
             m_measureElems.push_back(elem);
-        elemSize += elem->m_size;
+
+        // Seek to end of element using absolute positioning (like enc2ly)
+        // Element total size is m_size bytes starting from tick
+        // For very old format (v0xA6), element spacing is size * 2
+        if (elem->m_size > 0) {
+            qint64 elemSpacing = veryOldFormat ? elem->m_size * 2 : elem->m_size;
+            data.device()->seek(elemStart + elemSpacing);
+        } else {
+            // If size is 0, something is wrong - skip a few bytes to avoid infinite loop
+            qDebug() << "Element size is 0, advancing by minimum amount";
+            data.device()->seek(data.device()->pos() + 1);
+        }
+
         data >> tick;
         qDebug() << "tick" << tick;
+
+        // Very old format (v0xA6) doesn't use 0xFFFF end marker
+        // Check for end of block instead
+        if (veryOldFormat && data.device()->pos() >= measEnd - 4) {
+            break;
+        }
     }
-    const int remaining = m_varsize - elemSize - 4;
-    qDebug()
-            << "elemSize" << elemSize
-            << "remaining" << remaining;
-    if (remaining > 0)
-        data.skipRawData(remaining);
+
+    // Seek to end of measure block to maintain block alignment
+    data.device()->seek(measEnd);
     return true;
 }
 
@@ -486,7 +562,8 @@ bool EncMeasureElemNone::read(QDataStream& data)
     qDebug() << "EncMeasureElemNone::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);
 
     return true;
 }
@@ -507,7 +584,8 @@ bool EncMeasureElemClef::read(QDataStream& data)
     qDebug() << "EncMeasureElemClef::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);
 
     return true;
 }
@@ -529,7 +607,8 @@ bool EncMeasureElemKeyChange::read(QDataStream& data)
 
     EncMeasureElem::read(data);
     data >> m_tipo;
-    data.skipRawData(m_size - 5 - 1); // skip to end
+    int toSkip = m_size - 5 - 1;
+    if (toSkip > 0) data.skipRawData(toSkip); // skip to end
     m_xoffset = 0;                    // like in enc2ly
 
     qDebug()
@@ -558,7 +637,8 @@ bool EncMeasureElemTie::read(QDataStream& data)
     EncMeasureElem::read(data);
     data.skipRawData(5);
     data >> m_xoffset;
-    data.skipRawData(m_size - 5 - 6);   // skip to end
+    int toSkip = m_size - 5 - 6;
+    if (toSkip > 0) data.skipRawData(toSkip);   // skip to end
 
     qDebug()
             << "m_tick" << m_tick
@@ -587,7 +667,8 @@ bool EncMeasureElemBeam::read(QDataStream& data)
     qDebug() << "EncMeasureElemBeam::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
     m_xoffset = 255;                  // faked like in enc2ly
 
     qDebug()
@@ -668,7 +749,8 @@ bool EncMeasureElemLyric::read(QDataStream& data)
     qDebug() << "EncMeasureElemLyric::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     return true;
 }
@@ -708,16 +790,19 @@ bool EncMeasureElemChord::read(QDataStream& data)
             quint8 upper;
             data >> upper;
             ++j;
-            QChar ch = QChar((upper << 8) + lower);
+            QChar ch = QChar(char16_t((upper << 8) + lower));
             if (ch == '\0')
                 done = true;
             if (!done)
                 m_teksto.append(ch);
         }
-        data.skipRawData(m_size - 5 - 9 - 2 * 18); // skip to end
+        int toSkip = m_size - 5 - 9 - 2 * 18;
+        if (toSkip > 0) data.skipRawData(toSkip); // skip to end
     }
-    else
-        data.skipRawData(m_size - 5 - 9); // skip to end
+    else {
+        int toSkip = m_size - 5 - 9;
+        if (toSkip > 0) data.skipRawData(toSkip); // skip to end
+    }
 
     qDebug()
             << "m_toniko" << m_toniko
@@ -747,6 +832,13 @@ bool EncMeasureElemNote::read(QDataStream& data)
     qDebug() << "EncMeasureElemNote::read()";
 
     EncMeasureElem::read(data);
+
+    // Format differences:
+    // - v0xC4 (size=28): new format, pitch at correct position
+    // - v0xC2 (size=22): old format, pitch stored where tuplet is read
+    // - v0xA6 (size=10): very old format, but pitch at correct position (uses size*2 spacing)
+    bool needsPitchFix = (m_size == 22);  // Only v0xC2 needs pitch fix
+
     data >> m_faceValue;
     data >> m_grace1;
     data >> m_grace2;
@@ -766,7 +858,14 @@ bool EncMeasureElemNote::read(QDataStream& data)
     data >> m_articulationUp;
     data.skipRawData(1);
     data >> m_articulationDown;
-    data.skipRawData(m_size - 27);     // skip to end
+    int toSkip = m_size - 27;
+    if (toSkip > 0) data.skipRawData(toSkip);
+
+    // In v0xC2 format, pitch is stored where tuplet field is read
+    if (needsPitchFix) {
+        m_semiTonePitch = m_tuplet;
+        m_tuplet = 0;
+    }
 
     qDebug()
             << "m_faceValue" << m_faceValue
@@ -828,7 +927,8 @@ bool EncMeasureElemRest::read(QDataStream& data)
     data.skipRawData(2);
     data >> m_tuplet;
     data >> m_dotControl;
-    data.skipRawData(m_size - 10 - 5);     // skip to end
+    int toSkip = m_size - 10 - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     qDebug()
             << "m_faceValue" << m_faceValue
@@ -857,7 +957,8 @@ bool EncMeasureElemUnknown::read(QDataStream& data)
     qDebug() << "EncMeasureElemUnknown::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     return true;
 }
@@ -953,7 +1054,7 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
             quint8 lower;
             data >> lower;
             ++j;
-            QChar ch = QChar(lower);
+            QChar ch = QChar(char16_t(lower));
             if (ch == '\0')
                 done = true;
             if (!done)
@@ -968,7 +1069,7 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
             quint8 upper;
             data >> upper;
             ++j;
-            QChar ch = QChar((upper << 8) + lower);
+            QChar ch = QChar(char16_t((upper << 8) + lower));
             if (ch == '\0')
                 done = true;
             if (!done)
@@ -1060,7 +1161,11 @@ static void addSpannerEnds(MeasureVec& mv)
                     //print_orna(end_orna);
                     const int endMeas = i + orna->m_al_mezuro;
                     //qDebug() << "endMeas" << endMeas;
-                    mevv.at(endMeas).push_back(end_orna);
+                    if (endMeas >= 0 && static_cast<size_t>(endMeas) < mevv.size()) {
+                        mevv.at(endMeas).push_back(end_orna);
+                    } else {
+                        delete end_orna;
+                    }
                 }
                 else if (orna->type() == ornamentType::WEDGESTART) { // ST_DINAMIKO
                     EncMeasureElemOrnament* end_orna = new EncMeasureElemOrnament(0, 0, 0);
@@ -1071,7 +1176,11 @@ static void addSpannerEnds(MeasureVec& mv)
                     //print_orna(end_orna);
                     const int endMeas = i + orna->m_al_mezuro;
                     //qDebug() << "endMeas" << endMeas;
-                    mevv.at(endMeas).push_back(end_orna);
+                    if (endMeas >= 0 && static_cast<size_t>(endMeas) < mevv.size()) {
+                        mevv.at(endMeas).push_back(end_orna);
+                    } else {
+                        delete end_orna;
+                    }
                 }
             }
         }
@@ -1154,7 +1263,7 @@ bool EncFile::read(QDataStream& data)
         }
         else if (next_id == "MEAS") {
             EncMeasure measure;
-            measure.read(data, var_size);
+            measure.read(data, var_size, m_header.isOldFormat(), m_header.isVeryOldFormat());
             m_measures.push_back(measure);
         }
         else if (next_id == "TEXT") {
@@ -1174,7 +1283,9 @@ bool EncFile::read(QDataStream& data)
     }
 
     fixupInstruments(m_instruments, m_header.m_instrumentCount);
-    countStaves(m_instruments, m_lines.at(0).lineStaffData());
+    if (!m_lines.empty()) {
+        countStaves(m_instruments, m_lines.at(0).lineStaffData());
+    }
     addSpannerEnds(m_measures);
 
     return true;

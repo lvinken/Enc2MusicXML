@@ -49,7 +49,7 @@ public:
     MxmlConverter(const EncFile& ef);
     void convertEncToMxml();
 private:
-    bool hasMultipleVoices(const int partNr) const { return m_voicesPerPart.at(partNr) > 1; }
+    bool hasMultipleVoices(const int partNr) const { return (partNr < static_cast<int>(m_voicesPerPart.size())) && (m_voicesPerPart.at(partNr) > 1); }
     void attributes(const int partNr);
     void barlineLeft(const int partNr, const size_t measureNr);
     void barlineRight(const int partNr, const size_t measureNr);

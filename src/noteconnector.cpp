@@ -150,6 +150,10 @@ size_t NoteConnector::measureNumber(const EncMeasureElem* const elem) const
 
 const EncMeasureElemNote* NoteConnector::findClosestNote(const quint8 xoffset, const quint8 voice, const quint8 staffIdx, const size_t measureNr) const
 {
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return nullptr;
+    }
     const EncMeasureElemNote* closestNote { nullptr };
     int minimum { INT_MAX };
     const auto& m = m_ef.measures().at(measureNr);
@@ -176,6 +180,10 @@ const EncMeasureElemNote* NoteConnector::findClosestNote(const quint8 xoffset, c
 
 const EncMeasureElemNote* NoteConnector::findFirstNoteAfterXoffset(const quint8 xoffset, const quint8 voice, const quint8 staffIdx, const size_t measureNr) const
 {
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return nullptr;
+    }
     const auto& m = m_ef.measures().at(measureNr);
 
     for (const auto elem : m.measureElems()) {
@@ -196,6 +204,10 @@ const EncMeasureElemNote* NoteConnector::findFirstNoteAfterXoffset(const quint8 
 
 const EncMeasureElemNote* NoteConnector::findLastNote(const EncMeasureElemNote* const note, const size_t measureNr) const
 {
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return nullptr;
+    }
     const EncMeasureElemNote* previousNote { nullptr };
     const auto& m = m_ef.measures().at(measureNr);
 
@@ -219,6 +231,10 @@ const EncMeasureElemNote* NoteConnector::findLastNote(const EncMeasureElemNote* 
 // last note before a given xpos
 const EncMeasureElemNote* NoteConnector::findLastNoteBeforeXoffset(const quint8 xoffset, const quint8 voice, const quint8 staffIdx, const size_t measureNr) const
 {
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return nullptr;
+    }
     const EncMeasureElemNote* lastNote { nullptr };
     const auto& m = m_ef.measures().at(measureNr);
 
@@ -240,6 +256,10 @@ const EncMeasureElemNote* NoteConnector::findLastNoteBeforeXoffset(const quint8 
 
 const EncMeasureElemNote* NoteConnector::findPreviousNote(const EncMeasureElemNote* const note, const size_t measureNr) const
 {
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return nullptr;
+    }
     const EncMeasureElemNote* previousNote { nullptr };
 
     if (note->m_tick > 0) {
@@ -272,6 +292,10 @@ const EncMeasureElemOrnament* NoteConnector::direction(const EncMeasureElemNote*
     }
 
     const auto measureNr = measureNumber(note);
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return nullptr;
+    }
     const auto& m = m_ef.measures().at(measureNr);
 
     for (const auto elem : m.measureElems()) {
@@ -337,6 +361,10 @@ const EncMeasureElemOrnament* NoteConnector::slurStop(const EncMeasureElemNote* 
 bool NoteConnector::tieStart(const EncMeasureElemNote* const note) const
 {
     const auto measureNr = measureNumber(note);
+    // Bounds check
+    if (measureNr >= m_ef.measures().size()) {
+        return false;
+    }
     const auto& m = m_ef.measures().at(measureNr);
 
     for (const auto elem : m.measureElems()) {
