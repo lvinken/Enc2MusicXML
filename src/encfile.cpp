@@ -25,6 +25,9 @@
 #include <QtDebug>
 #include <QIODevice>
 
+#include <map>
+#include <algorithm>
+
 #include "encfile.h"
 
 
@@ -517,6 +520,70 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat,
     data.device()->seek(measEnd);
     return true;
 }
+
+
+//---------------------------------------------------------
+// Calculate real durations from ticks
+// For each voice/staff combination, calculates the actual duration
+// of each element based on the tick of the next element.
+//---------------------------------------------------------
+
+void EncMeasure::calculateRealDurations()
+{
+    // Calculate correct measure duration from time signature
+    // 720 = whole note ticks, so measure = num * (720 / den)
+    qint16 correctMeasureDuration = m_timeSigNum * (720 / m_timeSigDen);
+
+    // Scale factor: Encore files sometimes use 720 ticks internally even for 3/4 time
+    // We need to scale tick values to match the actual time signature
+    double scaleFactor = (m_durTicks > 0) ? static_cast<double>(correctMeasureDuration) / m_durTicks : 1.0;
+
+    // Group notes and rests by staff and voice (only elements with duration)
+    std::map<std::pair<int, int>, std::vector<EncMeasureElem*>> groups;
+
+    for (auto* elem : m_measureElems) {
+        // Only process notes and rests
+        if (dynamic_cast<EncMeasureElemNote*>(elem) || dynamic_cast<EncMeasureElemRest*>(elem)) {
+            auto key = std::make_pair(static_cast<int>(elem->m_staffIdx), static_cast<int>(elem->m_voice));
+            groups[key].push_back(elem);
+        }
+    }
+
+    // For each group, sort by tick and calculate real durations
+    for (auto& [key, elems] : groups) {
+        // Sort by tick
+        std::sort(elems.begin(), elems.end(), [](const EncMeasureElem* a, const EncMeasureElem* b) {
+            return a->m_tick < b->m_tick;
+        });
+
+        // Calculate durations
+        for (size_t i = 0; i < elems.size(); ++i) {
+            qint16 nextTick;
+            if (i + 1 < elems.size()) {
+                // Find next element with different tick (skip chord notes with same tick)
+                size_t j = i + 1;
+                while (j < elems.size() && elems[j]->m_tick == elems[i]->m_tick) {
+                    ++j;
+                }
+                if (j < elems.size()) {
+                    nextTick = elems[j]->m_tick;
+                } else {
+                    nextTick = m_durTicks;
+                }
+            } else {
+                nextTick = m_durTicks;
+            }
+
+            // Scale the duration to match correct measure duration
+            qint16 rawDur = nextTick - elems[i]->m_tick;
+            qint16 realDur = static_cast<qint16>(rawDur * scaleFactor + 0.5);
+            if (realDur > 0) {
+                elems[i]->m_realDuration = realDur;
+            }
+        }
+    }
+}
+
 
 //---------------------------------------------------------
 // EncMeasureElem
@@ -1264,6 +1331,7 @@ bool EncFile::read(QDataStream& data)
         else if (next_id == "MEAS") {
             EncMeasure measure;
             measure.read(data, var_size, m_header.isOldFormat(), m_header.isVeryOldFormat());
+            measure.calculateRealDurations();
             m_measures.push_back(measure);
         }
         else if (next_id == "TEXT") {

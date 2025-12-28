@@ -504,6 +504,18 @@ void MxmlWriter::writeTime(const unsigned int beats, const unsigned int beattype
 
 
 //---------------------------------------------------------
+// writeTimeChange - write time signature change (inside attributes)
+//---------------------------------------------------------
+
+void MxmlWriter::writeTimeChange(const unsigned int beats, const unsigned int beattype)
+{
+    m_xml.writeStartElement("attributes");
+    writeTime(beats, beattype);
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
 // writeTimeModification - write time modification
 //---------------------------------------------------------
 

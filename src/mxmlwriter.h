@@ -66,6 +66,7 @@ public:
     void writeTie(const StartStop startstop);
     void writeTied(const StartStop startstop);
     void writeTime(const unsigned int beats, const unsigned int beattype);
+    void writeTimeChange(const unsigned int beats, const unsigned int beattype);
     void writeTimeModification(const int actual, const int normal);
     void writeTuplet(TupletState state);
     void writeVoice(const bool hasMultipleVoices, const int voice);

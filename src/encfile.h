@@ -213,6 +213,7 @@ public:
     quint8  m_size              { 0 };  // offset  4                ENCORE_OBJEKTO::grando
     quint8  m_staffIdx          { 0 };  // offset  5                ENCORE_OBJEKTO::liniaro
     quint8  m_xoffset           { 0 };  // offset 10                ENCORE_OBJEKTO::kie
+    qint16  m_realDuration      { -1 }; // calculated from ticks, -1 means not calculated
 };
 
 
@@ -402,6 +403,7 @@ class EncMeasure                        // ENCORE_MEZURO
 public:
     EncMeasure() = default;
     bool read(QDataStream& data, const quint32 var_size, bool oldFormat = false, bool veryOldFormat = false);
+    void calculateRealDurations();       // Calculate real durations from ticks
     const MeasureElemVec& measureElems() const { return m_measureElems; }
     void push_back(EncMeasureElem* elem) { m_measureElems.push_back(elem); }
     barlineType barTypeStart() const { return static_cast<barlineType>(m_barTypeStart); }

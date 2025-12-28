@@ -546,6 +546,16 @@ static bool isGrace(const EncMeasureElemNote* const note)
 
 static int durationNote(const EncMeasureElemNote* const note)
 {
+    if (isGrace(note)) {
+        return 0;
+    }
+
+    // Use real duration calculated from ticks if available
+    if (note->m_realDuration > 0) {
+        return note->m_realDuration;
+    }
+
+    // Fall back to calculated duration from faceValue
     int duration = faceValue2duration(note->m_faceValue & 0x0F);
     for (int i = 0; i < (note->m_dotControl & 3); ++i) {
         duration *= 3;
@@ -555,10 +565,6 @@ static int durationNote(const EncMeasureElemNote* const note)
     if (note->actualNotes() > 0 && note->normalNotes() > 0) {
         duration *= note->normalNotes();
         duration /= note->actualNotes();
-    }
-
-    if (isGrace(note)) {
-        return 0;
     }
 
     return duration;
@@ -572,6 +578,12 @@ static int durationNote(const EncMeasureElemNote* const note)
 
 static int durationRest(const EncMeasureElemRest* const rest)
 {
+    // Use real duration calculated from ticks if available
+    if (rest->m_realDuration > 0) {
+        return rest->m_realDuration;
+    }
+
+    // Fall back to calculated duration from faceValue
     int duration = faceValue2duration(rest->m_faceValue & 0x0F);
     for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
         duration *= 3;
@@ -723,10 +735,32 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
     barlineLeft(partNr, measureNr);
 
+    // Check for time signature change
+    bool timeSigChanged = false;
+    if (measureNr > 0) {
+        const auto& prevM = m_ef.measures().at(measureNr - 1);
+        if (m.m_timeSigNum != prevM.m_timeSigNum || m.m_timeSigDen != prevM.m_timeSigDen) {
+            timeSigChanged = true;
+        }
+    }
+
     if (measureNr == 0)
         attributes(partNr);
-    else if (keyCh)
-        keyChange(keyCh);
+    else if (keyCh || timeSigChanged) {
+        // Write attributes with key change and/or time signature change
+        m_writer.writeElementStart("attributes");
+        if (keyCh) {
+            quint8 kcType = keyCh->m_tipo;
+            const auto fifths = encKeyToFifths(kcType);
+            m_writer.writeKey(fifths);
+            qDebug() << "writeKeyChange" << "kcType" << kcType << "fifths" << fifths;
+        }
+        if (timeSigChanged) {
+            m_writer.writeTime(m.m_timeSigNum, m.m_timeSigDen);
+            qDebug() << "writeTimeChange" << m.m_timeSigNum << "/" << m.m_timeSigDen;
+        }
+        m_writer.writeElementEnd();
+    }
 
     qDebug() << "xxx_repeat_sym"
              << "measureNr" << measureNr
