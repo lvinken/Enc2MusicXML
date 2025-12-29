@@ -141,6 +141,57 @@ static QString faceValue2xml(const quint8 faceValue)
 
 
 //---------------------------------------------------------
+// correctNoteType - correct note type to match actual duration
+// Common Encore bug: last note in measure has wrong duration
+// because m_durTicks is incorrect. Instead of changing duration
+// (which would overflow the measure), change the note type to match.
+//---------------------------------------------------------
+
+static QString correctNoteType(const int realDuration, const quint8 faceValue)
+{
+    // Get the type that faceValue would give
+    QString originalType = faceValue2xml(faceValue & 0x0F);
+
+    if (realDuration <= 0) {
+        return originalType;
+    }
+
+    // Find what note type matches the actual duration
+    // Check common durations: whole=960, half=480, quarter=240, eighth=120, 16th=60, 32nd=30
+    QString correctType = originalType;
+
+    if (realDuration == 960) correctType = "whole";
+    else if (realDuration == 480) correctType = "half";
+    else if (realDuration == 240) correctType = "quarter";
+    else if (realDuration == 120) correctType = "eighth";
+    else if (realDuration == 60) correctType = "16th";
+    else if (realDuration == 30) correctType = "32nd";
+    else if (realDuration == 15) correctType = "64th";
+    // Also check dotted values
+    else if (realDuration == 720) correctType = "half";      // dotted half
+    else if (realDuration == 360) correctType = "quarter";   // dotted quarter
+    else if (realDuration == 180) correctType = "eighth";    // dotted eighth
+    else if (realDuration == 90) correctType = "16th";       // dotted 16th
+    else if (realDuration == 45) correctType = "32nd";       // dotted 32nd
+    // Triplet durations (3:2 ratio, so 2/3 of normal duration)
+    else if (realDuration == 640) correctType = "whole";     // whole triplet
+    else if (realDuration == 320) correctType = "half";      // half triplet
+    else if (realDuration == 160) correctType = "quarter";   // quarter triplet
+    else if (realDuration == 80) correctType = "eighth";     // eighth triplet
+    else if (realDuration == 40) correctType = "16th";       // 16th triplet
+    else if (realDuration == 20) correctType = "32nd";       // 32nd triplet (fusa)
+    else if (realDuration == 10) correctType = "64th";       // 64th triplet
+
+    if (correctType != originalType) {
+        qDebug() << "xxx_type_fix: correcting type from" << originalType
+                 << "to" << correctType << "for duration" << realDuration;
+    }
+
+    return correctType;
+}
+
+
+//---------------------------------------------------------
 // encClef2xml - convert Encore to MusicXML clef type
 //---------------------------------------------------------
 
@@ -225,54 +276,53 @@ static void midipitch2xml(const quint8 pitch, const accidentalType accid, const 
 
 //---------------------------------------------------------
 // TupletHandler - handle tuplet state
+// Groups tuplets by their natural duration - all tuplet notes within the same
+// tuplet group belong together. The group duration depends on note value:
+// - Eighth triplet (80 ticks each): group = 240 ticks (one quarter beat)
+// - Quarter triplet (160 ticks each): group = 480 ticks (one half beat)
+// - Sixteenth triplet (40 ticks each): group = 120 ticks (one eighth beat)
 //---------------------------------------------------------
 
-TupletState TupletHandler::newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue)
+TupletState TupletHandler::newNote(const quint8 actualNotes, const quint8 normalNotes, const int tick, const int duration)
 {
     TupletState res { TupletState::NONE };
-    char const * printableRes { nullptr };
+
     if (actualNotes <= 0 || normalNotes <= 0) {
-        printableRes = "none";
-        m_count = 0;
+        // Not a tuplet note
+        if (m_inTuplet) {
+            // End previous tuplet group
+            res = TupletState::STOP;
+            m_inTuplet = false;
+            m_groupStartTick = -1;
+            m_groupDuration = 0;
+        }
+        return res;
+    }
+
+    // Calculate the total duration of this tuplet group
+    // For 3:2, three notes replace two normal notes, so group = duration * actualNotes
+    int groupDuration = duration * actualNotes;
+
+    if (!m_inTuplet) {
+        // Start a new tuplet group
+        res = TupletState::START;
+        m_inTuplet = true;
+        m_groupStartTick = tick;
+        m_groupDuration = groupDuration;
     }
     else {
-        if (m_count == 0) {
-            printableRes = "start";
-            res = TupletState::START;
-            ++m_count;
-            m_value = faceValue;
-        }
-        else {
-            int count = 1;
-            int value = faceValue;
-            while (value > m_value) {
-                m_count *= 2;
-                ++m_value;
-            }
-            while (m_value > value) {
-                count *= 2;
-                ++value;
-            }
-            m_count += count;
-            if (m_count >= actualNotes) {
-                printableRes = "stop";
-                res = TupletState::STOP;
-                m_count = 0;
-            }
-            else {
-                res = TupletState::MID;
-            }
+        // Check if this note belongs to a different tuplet group
+        // A new group starts only if we've exceeded the current group's duration
+        // Don't start new group just because note value changed (allows mixed eighths/sixteenths)
+        if (tick >= m_groupStartTick + m_groupDuration) {
+            // Close previous tuplet and start new one
+            res = TupletState::STOPSTART;
+            m_groupStartTick = tick;
+            m_groupDuration = groupDuration;
         }
     }
-    /*
-    qDebug()
-            << "TupletHandler::newNote()"
-            << "actualNotes" << actualNotes
-            << "normalNotes" << normalNotes
-            << "faceValue" << faceValue
-            << "res" << printableRes
-               ;
-               */
+    // else: continue in same tuplet group (no action needed)
+
     return res;
 }
 
@@ -558,7 +608,8 @@ void MxmlConverter::key()
         if (line.lineStaffData().size() > 0) {
             const auto& data = line.lineStaffData().at(0);
             quint8 kcType = data.m_key;
-            m_writer.writeKey(encKeyToFifths(kcType));
+            m_currentFifths = encKeyToFifths(kcType);
+            m_writer.writeKey(m_currentFifths);
         }
     }
 }
@@ -616,24 +667,27 @@ static int durationNote(const EncMeasureElemNote* const note)
         return 0;
     }
 
-    // Use real duration calculated from ticks if available
+    // Calculate expected duration from faceValue
+    int expectedDuration = faceValue2duration(note->m_faceValue & 0x0F);
+    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
+        expectedDuration *= 3;
+        expectedDuration /= 2;
+    }
+
+    // Apply time modification (tuplet) if present
+    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
+        expectedDuration *= note->normalNotes();
+        expectedDuration /= note->actualNotes();
+    }
+
+    // Use real duration if available
+    // Note: Even if duration seems wrong for a tuplet, trust the Encore file
+    // as it may be a tied note split across measure boundaries
     if (note->m_realDuration > 0) {
         return note->m_realDuration;
     }
 
-    // Fall back to calculated duration from faceValue
-    int duration = faceValue2duration(note->m_faceValue & 0x0F);
-    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
-        duration *= 3;
-        duration /= 2;
-    }
-
-    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
-        duration *= note->normalNotes();
-        duration /= note->actualNotes();
-    }
-
-    return duration;
+    return expectedDuration;
 }
 
 
@@ -817,9 +871,9 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
         m_writer.writeElementStart("attributes");
         if (keyCh) {
             quint8 kcType = keyCh->m_tipo;
-            const auto fifths = encKeyToFifths(kcType);
-            m_writer.writeKey(fifths);
-            qDebug() << "writeKeyChange" << "kcType" << kcType << "fifths" << fifths;
+            m_currentFifths = encKeyToFifths(kcType);
+            m_writer.writeKey(m_currentFifths);
+            qDebug() << "writeKeyChange" << "kcType" << kcType << "fifths" << m_currentFifths;
         }
         if (timeSigChanged) {
             m_writer.writeTime(m.m_timeSigNum, m.m_timeSigDen);
@@ -839,81 +893,133 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
         repeatLeft(m.repeat());
     }
 
-    TupletHandler th;
-
     // write notes and rests for all voices. As elem->m_tick sometimes differs slightly
     // from the expected value, simply assume all voices start at tick = 0 and no gaps
     // are present.
 
     int tick = 0;
     for (const auto v : voices) {
+        TupletHandler th;  // Each voice has its own tuplet handler
         const EncMeasureElemNote* prevnote = nullptr;
         if (tick > 0) {
             // explicit backup to prevent error message at start of voice
             m_writer.writeBackupForward(-tick, 0);
             tick = 0;
         }
+
+        // First pass: collect valid elements for this voice
+        std::vector<EncMeasureElem*> voiceElems;
         for (const auto& elem : m.measureElems()) {
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
-                int duration = 0;
-                if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
-                    // Generate forward if note doesn't start at current tick position
-                    if (elem->m_tick > tick) {
-                        m_writer.writeBackupForward(elem->m_tick - tick, v);
-                        tick = elem->m_tick;
-                    }
-
-                    const bool isChord = notesAreInChord(prevnote, curnote);
-                    if (isChord) {
-                        qDebug() << "xxx_chord"
-                                 << "measureNr" << measureNr
-                                 << "voice" << v
-                                 << "elem->m_tick" << elem->m_tick
-                                    ;
-                    }
-
-                    const auto direction = m_nc.direction(curnote);
-                    if (direction
-                            && direction->type() == ornamentType::STAFFTEXT
-                            && direction->m_tind < m_ef.text().m_texts.size()) {
-                        m_writer.writeWords(m_ef.text().m_texts.at(direction->m_tind));
-                    }
-                    else if (direction
-                             && direction->type() == ornamentType::TEMPO) {
-                        m_writer.writeMetronome(faceValue2xml((direction->m_noto & 0x0F) + 1),
-                                                (direction->m_noto & 0x80) ? 1 : 0,
-                                                direction->m_tempo);
-                    }
-
-                    const auto wedgeStart = m_nc.wedgeStart(curnote);
-                    const auto wedgeStop = m_nc.wedgeStop(curnote);
-
-                    if (wedgeStart) {
-                        m_writer.writeWedge((wedgeStart->m_speguleco & 0x01)
-                                            ? WedgeType::DIMINUENDO
-                                            : WedgeType::CRESCENDO);
-                    }
-
-                    note(curnote, partNr, th, isChord);
-                    duration = isChord ? 0 : durationNote(curnote);
-                    prevnote = curnote;
-
-                    if (wedgeStop) {
-                        m_writer.writeWedge(WedgeType::STOP);
-                    }
+                if (elem->m_tick > m.m_durTicks) continue;  // Skip garbage
+                if (const auto* note = dynamic_cast<const EncMeasureElemNote*>(elem)) {
+                    const bool isChord = notesAreInChord(prevnote, note);
+                    if (!isChord && tick >= m.m_durTicks) continue;  // Skip extra notes
+                    voiceElems.push_back(elem);
+                    tick += isChord ? 0 : durationNote(note);
+                    prevnote = note;
                 }
-                else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-                    // Generate forward if rest doesn't start at current tick position
-                    if (elem->m_tick > tick) {
-                        m_writer.writeBackupForward(elem->m_tick - tick, v);
-                        tick = elem->m_tick;
-                    }
-                    rest(currest, partNr, th);
-                    duration = durationRest(currest);
-                    prevnote = nullptr; // can't be part of chord
+                else if (const auto* rest = dynamic_cast<const EncMeasureElemRest*>(elem)) {
+                    int restDur = durationRest(rest);
+                    if (restDur <= 0) continue;  // Skip invalid rests
+                    voiceElems.push_back(elem);
+                    tick += restDur;
+                    prevnote = nullptr;
                 }
-                tick += duration;
             }
+        }
+
+        // Reset for second pass
+        tick = 0;
+        prevnote = nullptr;
+
+        // Second pass: write elements with proper tuplet handling
+        for (size_t i = 0; i < voiceElems.size(); ++i) {
+            const auto& elem = voiceElems[i];
+
+            // Check if next NON-CHORD element is a tuplet note (for closing current tuplet)
+            // We need to skip chord notes to find the actual next musical event
+            bool nextNonChordIsTuplet = false;
+            bool isLastNonChordInMeasure = true;
+            const EncMeasureElemNote* curAsNote = dynamic_cast<const EncMeasureElemNote*>(elem);
+            for (size_t j = i + 1; j < voiceElems.size(); ++j) {
+                if (const auto* nextNote = dynamic_cast<const EncMeasureElemNote*>(voiceElems[j])) {
+                    // Check if this is a chord note (same tick as current)
+                    if (curAsNote && notesAreInChord(curAsNote, nextNote)) {
+                        continue;  // Skip chord notes
+                    }
+                    // Found next non-chord note
+                    nextNonChordIsTuplet = (nextNote->actualNotes() > 0 && nextNote->normalNotes() > 0);
+                    isLastNonChordInMeasure = false;
+                    break;
+                }
+                else if (const auto* nextRest = dynamic_cast<const EncMeasureElemRest*>(voiceElems[j])) {
+                    nextNonChordIsTuplet = (nextRest->actualNotes() > 0 && nextRest->normalNotes() > 0);
+                    isLastNonChordInMeasure = false;
+                    break;
+                }
+            }
+
+            int duration = 0;
+            if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
+                const bool isChord = notesAreInChord(prevnote, curnote);
+
+                // Generate forward or backup if note doesn't start at current tick position
+                if (!isChord && elem->m_tick != tick) {
+                    m_writer.writeBackupForward(elem->m_tick - tick, v);
+                    tick = elem->m_tick;
+                }
+
+                const auto direction = m_nc.direction(curnote);
+                if (direction
+                        && direction->type() == ornamentType::STAFFTEXT
+                        && direction->m_tind < m_ef.text().m_texts.size()) {
+                    m_writer.writeWords(m_ef.text().m_texts.at(direction->m_tind));
+                }
+                else if (direction
+                         && direction->type() == ornamentType::TEMPO) {
+                    m_writer.writeMetronome(faceValue2xml((direction->m_noto & 0x0F) + 1),
+                                            (direction->m_noto & 0x80) ? 1 : 0,
+                                            direction->m_tempo);
+                }
+
+                const auto wedgeStart = m_nc.wedgeStart(curnote);
+                const auto wedgeStop = m_nc.wedgeStop(curnote);
+
+                if (wedgeStart) {
+                    m_writer.writeWedge((wedgeStart->m_speguleco & 0x01)
+                                        ? WedgeType::DIMINUENDO
+                                        : WedgeType::CRESCENDO);
+                }
+
+                // Pass info about whether to force close tuplet
+                bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
+                // Pass calculated tick for tuplet grouping (m_tick from Encore can be inconsistent)
+                note(curnote, partNr, th, isChord, forceCloseTuplet, tick);
+                duration = isChord ? 0 : durationNote(curnote);
+                prevnote = curnote;
+
+                if (wedgeStop) {
+                    m_writer.writeWedge(WedgeType::STOP);
+                }
+            }
+            else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
+                if (elem->m_tick != tick) {
+                    m_writer.writeBackupForward(elem->m_tick - tick, v);
+                    tick = elem->m_tick;
+                }
+                bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
+                // Pass calculated tick for tuplet grouping
+                rest(currest, partNr, th, forceCloseTuplet, tick);
+                duration = durationRest(currest);
+                prevnote = nullptr;
+            }
+            tick += duration;
+        }
+
+        // Reset tuplet handler state for next voice
+        if (th.needsClose()) {
+            th.close();
         }
     }
 
@@ -932,24 +1038,15 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 // note - write a note
 //---------------------------------------------------------
 
-void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord)
+void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord, const bool forceCloseTuplet, const int calculatedTick)
 {
     char step = ' ';
     int alter = 0;
     int octave = 0;
-    int fifths = 0;
-    // TBD (too) simple implementation: use keysig of first staff of first measure only
-    // TODO: remove duplicate code
-    const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures && m_ef.lines().size() > 0) {
-        const auto& line = m_ef.lines().at(0);
-        if (line.lineStaffData().size() > 0) {
-            const auto& data = line.lineStaffData().at(0);
-            quint8 kcType = data.m_key;
-            fifths = encKeyToFifths(kcType);
-        }
-    }
-    midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), fifths, step, alter, octave);
+    const int noteDur = durationNote(note);  // Calculate duration once for consistency
+
+    // Use current key signature (tracked through key changes) for pitch spelling
+    midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), m_currentFifths, step, alter, octave);
     m_writer.writeElementStart("note");
 
     m_writer.writeGrace(note->graceType());
@@ -961,7 +1058,7 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     m_writer.writePitch(step, alter, octave);
 
     if (!isGrace(note)) {
-        m_writer.writeElement("duration", durationNote(note));
+        m_writer.writeElement("duration", noteDur);
     }
 
     const bool tieStart = m_nc.tieStart(note);
@@ -975,24 +1072,30 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     }
 
     m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
-    m_writer.writeElement("type", faceValue2xml(note->m_faceValue & 0x0F));
-    // Calculate dots from real duration if m_dotControl doesn't have them
-    int noteDots = note->m_dotControl & 3;
-    if (noteDots == 0 && note->m_realDuration > 0) {
-        noteDots = calculateDots(note->m_realDuration, note->m_faceValue);
-    }
+    // Use correctNoteType to fix type when duration doesn't match faceValue (common Encore bug)
+    m_writer.writeElement("type", correctNoteType(noteDur, note->m_faceValue));
+    // Always calculate dots from actual duration (m_dotControl is unreliable in old format files)
+    const int noteDots = calculateDots(noteDur, note->m_faceValue);
     m_writer.writeDots(noteDots);
 
     // Detect tuplet from duration if not set in file
     int noteActual = note->actualNotes();
     int noteNormal = note->normalNotes();
-    if (noteActual == 0 && note->m_realDuration > 0) {
-        noteActual = detectTuplet(note->m_realDuration, note->m_faceValue, noteNormal);
+    if (noteActual == 0 && noteDur > 0) {
+        noteActual = detectTuplet(noteDur, note->m_faceValue, noteNormal);
     }
     m_writer.writeTimeModification(noteActual, noteNormal);
     const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
-    const auto tupletState = th.newNote(noteActual, noteNormal, note->m_faceValue & 0x0F);
+    // Don't count chord notes for tuplet state - they're simultaneous with the previous note
+    // Use calculated tick for proper grouping (m_tick from Encore can be inconsistent)
+    auto tupletState = chord ? TupletState::NONE : th.newNote(noteActual, noteNormal, calculatedTick, noteDur);
+    // Force close tuplet if this is the last tuplet note before a non-tuplet or end of measure
+    // But NOT for chord notes - they shouldn't carry tuplet brackets
+    if (forceCloseTuplet && !chord && tupletState == TupletState::NONE && th.needsClose()) {
+        tupletState = TupletState::STOP;
+        th.close();
+    }
     m_writer.writeTuplet(tupletState);
 
 
@@ -1082,30 +1185,33 @@ void MxmlConverter::repeatLeft(const repeatType repeat)
 // rest - write a rest
 //---------------------------------------------------------
 
-void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th)
+void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th, const bool forceCloseTuplet, const int calculatedTick)
 {
+    const int restDur = durationRest(rest);  // Calculate duration once for consistency
+
     m_writer.writeElementStart("note");
     m_writer.writeElement("rest");
-    m_writer.writeElement("duration", durationRest(rest));
+    m_writer.writeElement("duration", restDur);
     m_writer.writeVoice(hasMultipleVoices(partNr), rest->m_voice + 1);
-    m_writer.writeElement("type", faceValue2xml(rest->m_faceValue & 0x0F));
-    // Calculate dots from real duration if m_dotControl doesn't have them
-    int restDots = rest->m_dotControl & 3;
-    if (restDots == 0 && rest->m_realDuration > 0) {
-        restDots = calculateDots(rest->m_realDuration, rest->m_faceValue);
-    }
+    // Use correctNoteType to fix type when duration doesn't match faceValue (common Encore bug)
+    m_writer.writeElement("type", correctNoteType(restDur, rest->m_faceValue));
+    // Always calculate dots from actual duration (m_dotControl is unreliable in old format files)
+    const int restDots = calculateDots(restDur, rest->m_faceValue);
     m_writer.writeDots(restDots);
 
-    // Detect tuplet from duration if not set in file
-    int restActual = rest->actualNotes();
-    int restNormal = rest->normalNotes();
-    if (restActual == 0 && rest->m_realDuration > 0) {
-        restActual = detectTuplet(rest->m_realDuration, rest->m_faceValue, restNormal);
-    }
+    // Use explicit tuplet info from Encore (don't auto-detect for rests)
+    const int restActual = rest->actualNotes();
+    const int restNormal = rest->normalNotes();
     m_writer.writeTimeModification(restActual, restNormal);
     const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
-    const auto tupletState = th.newNote(restActual, restNormal, rest->m_faceValue & 0x0F);
+    // Use calculated tick for proper grouping (m_tick from Encore can be inconsistent)
+    auto tupletState = th.newNote(restActual, restNormal, calculatedTick, restDur);
+    // Force close tuplet if this is the last tuplet note before a non-tuplet or end of measure
+    if (forceCloseTuplet && tupletState == TupletState::NONE && th.needsClose()) {
+        tupletState = TupletState::STOP;
+        th.close();
+    }
     m_writer.writeTuplet(tupletState);
     m_writer.writeElementEnd();
 }

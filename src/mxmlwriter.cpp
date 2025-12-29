@@ -536,16 +536,26 @@ void MxmlWriter::writeTimeModification(const int actual, const int normal)
 
 void MxmlWriter::writeTuplet(TupletState state)
 {
-    if (state == TupletState::START || state == TupletState::STOP) {
+    if (state == TupletState::START || state == TupletState::STOP || state == TupletState::STOPSTART) {
         m_xml.writeStartElement("notations");
-        if (state == TupletState::START) {
+        if (state == TupletState::STOP) {
+            m_xml.writeStartElement("tuplet");
+            m_xml.writeAttribute("type", "stop");
+            m_xml.writeEndElement();
+        }
+        else if (state == TupletState::START) {
             m_xml.writeStartElement("tuplet");
             m_xml.writeAttribute("type", "start");
             m_xml.writeEndElement();
         }
-        if (state == TupletState::STOP) {
+        else if (state == TupletState::STOPSTART) {
+            // Stop previous group
             m_xml.writeStartElement("tuplet");
             m_xml.writeAttribute("type", "stop");
+            m_xml.writeEndElement();
+            // Start new group
+            m_xml.writeStartElement("tuplet");
+            m_xml.writeAttribute("type", "start");
             m_xml.writeEndElement();
         }
         m_xml.writeEndElement();

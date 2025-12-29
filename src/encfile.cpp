@@ -539,6 +539,10 @@ void EncMeasure::calculateRealDurations()
 
     for (auto* elem : m_measureElems) {
         // Only process notes and rests
+        // Skip elements with tick position beyond measure duration (garbage data)
+        if (elem->m_tick > m_durTicks) {
+            continue;
+        }
         if (dynamic_cast<EncMeasureElemNote*>(elem) || dynamic_cast<EncMeasureElemRest*>(elem)) {
             auto key = std::make_pair(static_cast<int>(elem->m_staffIdx), static_cast<int>(elem->m_voice));
             groups[key].push_back(elem);

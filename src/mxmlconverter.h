@@ -26,15 +26,19 @@
 
 //---------------------------------------------------------
 // the tuplet state handler deduces tuplet start and stop notes
+// Groups tuplets by counting notes until actualNotes is reached
 //---------------------------------------------------------
 
 class TupletHandler {
 public:
     TupletHandler() {}
-    TupletState newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue);
+    TupletState newNote(const quint8 actualNotes, const quint8 normalNotes, const int tick, const int duration);
+    bool needsClose() const { return m_inTuplet; }
+    void close() { m_inTuplet = false; m_groupStartTick = -1; m_groupDuration = 0; }
 private:
-    int m_count { 0 };
-    int m_value { 0 };
+    bool m_inTuplet { false };
+    int m_groupStartTick { -1 };
+    int m_groupDuration { 0 };
 };
 
 
@@ -59,12 +63,12 @@ private:
     void key();
     void keyChange(const EncMeasureElemKeyChange* keyCh);
     void measure(const int partNr, const size_t measureNr);
-    void note(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord);
+    void note(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord, const bool forceCloseTuplet, const int calculatedTick);
     void part(const int n);
     void partList();
     void parts();
     void repeatLeft(const repeatType repeat);
-    void rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th);
+    void rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th, const bool forceCloseTuplet, const int calculatedTick);
     void scorePart(const int n, const EncInstrument& instr);
     void time();
     void work();
@@ -72,6 +76,7 @@ private:
     const NoteConnector m_nc;
     MxmlWriter m_writer;
     std::vector<std::size_t> m_voicesPerPart;
+    int m_currentFifths { 0 };  // Current key signature for pitch spelling
 };
 
 #endif // MXMLCONVERTER_H
