@@ -407,8 +407,7 @@ void MxmlConverter::attributes(const int partNr)
     m_writer.writeDivisions(240);
     key();
     time();
-    const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
-    m_writer.writeStaves(nstaves);
+    m_writer.writeStaves(nstaves(partNr));
     clefs(partNr);
     m_writer.writeElementEnd();
 }
@@ -520,9 +519,9 @@ void MxmlConverter::clefs(const int partNr)
     // TBD (too) simple implementation: use clef of first measure only
     const bool hasMeasures = m_ef.measures().size() > 0;
     if (hasMeasures && m_ef.lines().size() > 0) {
-        const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
+        const int partStaves = nstaves(partNr);
         const auto& encline = m_ef.lines().at(0);   // first system
-        for (int i = 0; i < nstaves; ++i) {
+        for (int i = 0; i < partStaves; ++i) {
             if (static_cast<size_t>(partNr + i) >= encline.lineStaffData().size()) {
                 break;
             }
@@ -532,7 +531,7 @@ void MxmlConverter::clefs(const int partNr)
             int line { 0 };
             int octCh { 0 };
             if (encClef2xml(ct, sign, line, octCh)) {
-                m_writer.writeClef((nstaves > 1) ? i : -1, sign, line, octCh);
+                m_writer.writeClef((partStaves > 1) ? i : -1, sign, line, octCh);
             }
         }
     }
@@ -657,8 +656,33 @@ static bool isGrace(const EncMeasureElemNote* const note)
 
 
 //---------------------------------------------------------
-// Determine if note's duration
-// TODO: refactor (common code shared by note and rest
+// calculateDuration - calculate duration from faceValue, dots, and tuplet info
+// Common logic shared by durationNote and durationRest
+//---------------------------------------------------------
+
+static int calculateDuration(const quint8 faceValue, const quint8 dotControl,
+                             const quint8 actualNotes, const quint8 normalNotes)
+{
+    int duration = faceValue2duration(faceValue & 0x0F);
+
+    // Apply dots (each dot adds half of previous value)
+    for (int i = 0; i < (dotControl & 3); ++i) {
+        duration *= 3;
+        duration /= 2;
+    }
+
+    // Apply time modification (tuplet)
+    if (actualNotes > 0 && normalNotes > 0) {
+        duration *= normalNotes;
+        duration /= actualNotes;
+    }
+
+    return duration;
+}
+
+
+//---------------------------------------------------------
+// durationNote - determine note's duration
 //---------------------------------------------------------
 
 static int durationNote(const EncMeasureElemNote* const note)
@@ -667,55 +691,29 @@ static int durationNote(const EncMeasureElemNote* const note)
         return 0;
     }
 
-    // Calculate expected duration from faceValue
-    int expectedDuration = faceValue2duration(note->m_faceValue & 0x0F);
-    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
-        expectedDuration *= 3;
-        expectedDuration /= 2;
-    }
-
-    // Apply time modification (tuplet) if present
-    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
-        expectedDuration *= note->normalNotes();
-        expectedDuration /= note->actualNotes();
-    }
-
-    // Use real duration if available
-    // Note: Even if duration seems wrong for a tuplet, trust the Encore file
-    // as it may be a tied note split across measure boundaries
+    // Use real duration if available (trust Encore file for tied notes across measures)
     if (note->m_realDuration > 0) {
         return note->m_realDuration;
     }
 
-    return expectedDuration;
+    return calculateDuration(note->m_faceValue, note->m_dotControl,
+                             note->actualNotes(), note->normalNotes());
 }
 
 
 //---------------------------------------------------------
-// Determine if rest's duration
-// TODO: refactor (common code shared by note and rest
+// durationRest - determine rest's duration
 //---------------------------------------------------------
 
 static int durationRest(const EncMeasureElemRest* const rest)
 {
-    // Use real duration calculated from ticks if available
+    // Use real duration if available
     if (rest->m_realDuration > 0) {
         return rest->m_realDuration;
     }
 
-    // Fall back to calculated duration from faceValue
-    int duration = faceValue2duration(rest->m_faceValue & 0x0F);
-    for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
-        duration *= 3;
-        duration /= 2;
-    }
-
-    if (rest->actualNotes() > 0 && rest->normalNotes() > 0) {
-        duration *= rest->normalNotes();
-        duration /= rest->actualNotes();
-    }
-
-    return duration;
+    return calculateDuration(rest->m_faceValue, rest->m_dotControl,
+                             rest->actualNotes(), rest->normalNotes());
 }
 
 
@@ -1085,8 +1083,7 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
         noteActual = detectTuplet(noteDur, note->m_faceValue, noteNormal);
     }
     m_writer.writeTimeModification(noteActual, noteNormal);
-    const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
-    m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
+    m_writer.writeStaff(nstaves(partNr), (note->m_voice < 4) ? 1 : 2);
     // Don't count chord notes for tuplet state - they're simultaneous with the previous note
     // Use calculated tick for proper grouping (m_tick from Encore can be inconsistent)
     auto tupletState = chord ? TupletState::NONE : th.newNote(noteActual, noteNormal, calculatedTick, noteDur);
@@ -1203,8 +1200,7 @@ void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr,
     const int restActual = rest->actualNotes();
     const int restNormal = rest->normalNotes();
     m_writer.writeTimeModification(restActual, restNormal);
-    const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
-    m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
+    m_writer.writeStaff(nstaves(partNr), (rest->m_voice < 4) ? 1 : 2);
     // Use calculated tick for proper grouping (m_tick from Encore can be inconsistent)
     auto tupletState = th.newNote(restActual, restNormal, calculatedTick, restDur);
     // Force close tuplet if this is the last tuplet note before a non-tuplet or end of measure

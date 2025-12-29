@@ -54,6 +54,7 @@ public:
     void convertEncToMxml();
 private:
     bool hasMultipleVoices(const int partNr) const { return (partNr < static_cast<int>(m_voicesPerPart.size())) && (m_voicesPerPart.at(partNr) > 1); }
+    int nstaves(const int partNr) const { return (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1; }
     void attributes(const int partNr);
     void barlineLeft(const int partNr, const size_t measureNr);
     void barlineRight(const int partNr, const size_t measureNr);
