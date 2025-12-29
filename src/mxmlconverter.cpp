@@ -54,6 +54,37 @@ static int faceValue2duration(const quint8 faceValue)
 
 
 //---------------------------------------------------------
+// calculateDots - calculate number of dots from duration and faceValue
+// A dotted note has duration = base * 1.5, double dotted = base * 1.75, etc.
+//---------------------------------------------------------
+
+static int calculateDots(const int realDuration, const quint8 faceValue)
+{
+    int baseDuration = faceValue2duration(faceValue & 0x0F);
+    if (baseDuration <= 0 || realDuration <= 0) {
+        return 0;
+    }
+
+    // Check for dotted durations
+    // 1 dot: base * 3/2 = base * 1.5
+    // 2 dots: base * 7/4 = base * 1.75
+    // 3 dots: base * 15/8 = base * 1.875
+
+    if (realDuration == baseDuration) {
+        return 0;
+    } else if (realDuration == (baseDuration * 3) / 2) {
+        return 1;
+    } else if (realDuration == (baseDuration * 7) / 4) {
+        return 2;
+    } else if (realDuration == (baseDuration * 15) / 8) {
+        return 3;
+    }
+
+    return 0;
+}
+
+
+//---------------------------------------------------------
 // faceValue2xml - convert Encore to MusicXML note type
 //---------------------------------------------------------
 
@@ -910,7 +941,12 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
 
     m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
     m_writer.writeElement("type", faceValue2xml(note->m_faceValue & 0x0F));
-    m_writer.writeDots(note->m_dotControl & 3);
+    // Calculate dots from real duration if m_dotControl doesn't have them
+    int noteDots = note->m_dotControl & 3;
+    if (noteDots == 0 && note->m_realDuration > 0) {
+        noteDots = calculateDots(note->m_realDuration, note->m_faceValue);
+    }
+    m_writer.writeDots(noteDots);
     m_writer.writeTimeModification(note->actualNotes(), note->normalNotes());
     const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
@@ -1011,7 +1047,12 @@ void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr,
     m_writer.writeElement("duration", durationRest(rest));
     m_writer.writeVoice(hasMultipleVoices(partNr), rest->m_voice + 1);
     m_writer.writeElement("type", faceValue2xml(rest->m_faceValue & 0x0F));
-    m_writer.writeDots(rest->m_dotControl & 3);
+    // Calculate dots from real duration if m_dotControl doesn't have them
+    int restDots = rest->m_dotControl & 3;
+    if (restDots == 0 && rest->m_realDuration > 0) {
+        restDots = calculateDots(rest->m_realDuration, rest->m_faceValue);
+    }
+    m_writer.writeDots(restDots);
     m_writer.writeTimeModification(rest->actualNotes(), rest->normalNotes());
     const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
