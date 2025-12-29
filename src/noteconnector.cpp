@@ -369,10 +369,11 @@ bool NoteConnector::tieStart(const EncMeasureElemNote* const note) const
 
     for (const auto elem : m.measureElems()) {
         if (const EncMeasureElemTie* const tie = dynamic_cast<const EncMeasureElemTie* const>(elem)) {
+            // Match tie to note by tick, voice, and staff only
+            // xoffset is a visual offset for tie placement, not for matching
             if (note->m_tick == tie->m_tick
                     && note->m_voice == tie->m_voice
-                    && note->m_staffIdx == tie->m_staffIdx
-                    && note->m_xoffset == tie->m_xoffset) {
+                    && note->m_staffIdx == tie->m_staffIdx) {
                 return true;
             }
         }
