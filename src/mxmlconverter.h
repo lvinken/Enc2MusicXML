@@ -55,6 +55,7 @@ public:
 private:
     bool hasMultipleVoices(const int partNr) const { return (partNr < static_cast<int>(m_voicesPerPart.size())) && (m_voicesPerPart.at(partNr) > 1); }
     int nstaves(const int partNr) const { return (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1; }
+    bool isTablature(const int partNr) const;
     void attributes(const int partNr);
     void barlineLeft(const int partNr, const size_t measureNr);
     void barlineRight(const int partNr, const size_t measureNr);
@@ -65,7 +66,7 @@ private:
     void keyChange(const EncMeasureElemKeyChange* keyCh);
     void measure(const int partNr, const size_t measureNr);
     void note(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord, const bool forceCloseTuplet, const int calculatedTick);
-    void part(const int n);
+    void part(const int encPartNr, const int xmlPartNr);
     void partList();
     void parts();
     void repeatLeft(const repeatType repeat);

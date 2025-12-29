@@ -521,7 +521,8 @@ void MxmlWriter::writeTimeChange(const unsigned int beats, const unsigned int be
 
 void MxmlWriter::writeTimeModification(const int actual, const int normal)
 {
-    if (actual > 0 && normal > 0) {
+    // Only write if it's a real tuplet (actual != normal, e.g., 3:2 triplet)
+    if (actual > 1 && normal > 0 && actual != normal) {
         m_xml.writeStartElement("time-modification");
         m_xml.writeTextElement("actual-notes", QString::number(actual));
         m_xml.writeTextElement("normal-notes", QString::number(normal));

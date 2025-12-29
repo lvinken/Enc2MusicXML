@@ -377,6 +377,25 @@ MxmlConverter::MxmlConverter(const EncFile& ef)
 
 
 //---------------------------------------------------------
+// isTablature - check if a part is tablature (should be skipped)
+//---------------------------------------------------------
+
+bool MxmlConverter::isTablature(const int partNr) const
+{
+    if (m_ef.lines().size() > 0) {
+        const auto& line = m_ef.lines().at(0);
+        if (static_cast<size_t>(partNr) < line.lineStaffData().size()) {
+            const auto& data = line.lineStaffData().at(partNr);
+            if (data.m_staffType == staffType::TAB || data.m_clef == clefType::TAB) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+//---------------------------------------------------------
 // convertEncToMxml - convert Encore to MusicXML
 //---------------------------------------------------------
 
@@ -1124,15 +1143,15 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
 
 
 //---------------------------------------------------------
-// part - write part n
+// part - write part (encPartNr is Encore index, xmlPartNr is MusicXML index)
 //---------------------------------------------------------
 
-void MxmlConverter::part(const int n)
+void MxmlConverter::part(const int encPartNr, const int xmlPartNr)
 {
-    const QString partId = QString("P%1").arg(n + 1);
+    const QString partId = QString("P%1").arg(xmlPartNr);
     m_writer.writeElementStartWithAttribute("part", "id", partId);
     for (unsigned int i = 0; i < m_ef.measures().size(); ++i)
-        measure(n, i);
+        measure(encPartNr, i);
     m_writer.writeElementEnd();
 }
 
@@ -1144,10 +1163,14 @@ void MxmlConverter::part(const int n)
 void MxmlConverter::partList()
 {
     m_writer.writeElementStart("part-list");
-    int count = 0;
-    for (const auto& s : m_ef.staves()) {
-        ++count;
-        scorePart(count, s);
+    int xmlPartNr = 0;
+    for (size_t i = 0; i < m_ef.staves().size(); ++i) {
+        if (isTablature(i)) {
+            qDebug() << "Skipping tablature part" << i;
+            continue;
+        }
+        ++xmlPartNr;
+        scorePart(xmlPartNr, m_ef.staves().at(i));
     }
     m_writer.writeElementEnd();
 }
@@ -1159,8 +1182,13 @@ void MxmlConverter::partList()
 
 void MxmlConverter::parts()
 {
+    int xmlPartNr = 0;
     for (unsigned int count = 0; count < m_ef.staves().size(); ++count) {
-        part(count);
+        if (isTablature(count)) {
+            continue;  // Skip tablature parts
+        }
+        ++xmlPartNr;
+        part(count, xmlPartNr);
     }
 }
 
