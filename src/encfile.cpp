@@ -530,13 +530,9 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat,
 
 void EncMeasure::calculateRealDurations()
 {
-    // Calculate correct measure duration from time signature
-    // 720 = whole note ticks, so measure = num * (720 / den)
-    qint16 correctMeasureDuration = m_timeSigNum * (720 / m_timeSigDen);
-
-    // Scale factor: Encore files sometimes use 720 ticks internally even for 3/4 time
-    // We need to scale tick values to match the actual time signature
-    double scaleFactor = (m_durTicks > 0) ? static_cast<double>(correctMeasureDuration) / m_durTicks : 1.0;
+    // Encore files use the same tick scale as MusicXML with divisions=240:
+    // quarter = 240 ticks, half = 480 ticks, 3/4 measure = 720 ticks
+    // So we just need to calculate duration from tick differences, no scaling needed.
 
     // Group notes and rests by staff and voice (only elements with duration)
     std::map<std::pair<int, int>, std::vector<EncMeasureElem*>> groups;
@@ -556,7 +552,7 @@ void EncMeasure::calculateRealDurations()
             return a->m_tick < b->m_tick;
         });
 
-        // Calculate durations
+        // Calculate durations from tick differences
         for (size_t i = 0; i < elems.size(); ++i) {
             qint16 nextTick;
             if (i + 1 < elems.size()) {
@@ -574,11 +570,9 @@ void EncMeasure::calculateRealDurations()
                 nextTick = m_durTicks;
             }
 
-            // Scale the duration to match correct measure duration
-            qint16 rawDur = nextTick - elems[i]->m_tick;
-            qint16 realDur = static_cast<qint16>(rawDur * scaleFactor + 0.5);
-            if (realDur > 0) {
-                elems[i]->m_realDuration = realDur;
+            qint16 duration = nextTick - elems[i]->m_tick;
+            if (duration > 0) {
+                elems[i]->m_realDuration = duration;
             }
         }
     }

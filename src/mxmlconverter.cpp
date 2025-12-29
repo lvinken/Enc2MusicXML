@@ -791,19 +791,11 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
                 int duration = 0;
                 if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
-                    /*
-                    if (elem->m_tick != tick) {
-                        qDebug() << "xxx_voice_timing"
-                                 << "tick_delta"
-                                 << "measureNr" << measureNr
-                                 << "voice" << v
-                                 << "tick" << tick
-                                 << "elem->m_tick" << elem->m_tick
-                                    ;
-                        writeBackupForward(elem->m_tick - tick, v);
+                    // Generate forward if note doesn't start at current tick position
+                    if (elem->m_tick > tick) {
+                        m_writer.writeBackupForward(elem->m_tick - tick, v);
                         tick = elem->m_tick;
                     }
-                    */
 
                     const bool isChord = notesAreInChord(prevnote, curnote);
                     if (isChord) {
@@ -845,18 +837,11 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                     }
                 }
                 else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-                    /*
-                    if (elem->m_tick != tick) {
-                        qDebug() << "xxx_voice_timing"
-                                 << "measureNr" << measureNr
-                                 << "voice" << v
-                                 << "tick" << tick
-                                 << "elem->m_tick" << elem->m_tick
-                                    ;
-                        writeBackupForward(elem->m_tick - tick, v);
+                    // Generate forward if rest doesn't start at current tick position
+                    if (elem->m_tick > tick) {
+                        m_writer.writeBackupForward(elem->m_tick - tick, v);
                         tick = elem->m_tick;
                     }
-                    */
                     rest(currest, partNr, th);
                     duration = durationRest(currest);
                     prevnote = nullptr; // can't be part of chord
