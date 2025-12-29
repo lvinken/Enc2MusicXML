@@ -85,6 +85,41 @@ static int calculateDots(const int realDuration, const quint8 faceValue)
 
 
 //---------------------------------------------------------
+// detectTuplet - detect tuplet from duration and faceValue
+// Returns actual notes (3 for triplet), 0 if not a tuplet
+// Sets normalNotes through output parameter
+//---------------------------------------------------------
+
+static int detectTuplet(const int realDuration, const quint8 faceValue, int& normalNotes)
+{
+    int baseDuration = faceValue2duration(faceValue & 0x0F);
+    if (baseDuration <= 0 || realDuration <= 0) {
+        normalNotes = 0;
+        return 0;
+    }
+
+    // Triplet (3:2): duration = base * 2/3
+    // e.g., eighth note base=120, triplet eighth=80
+    if (realDuration == (baseDuration * 2) / 3) {
+        normalNotes = 2;
+        return 3;
+    }
+
+    // Quintuplet (5:4): duration = base * 4/5
+    if (realDuration == (baseDuration * 4) / 5) {
+        normalNotes = 4;
+        return 5;
+    }
+
+    // Sextuplet (6:4): duration = base * 4/6 = base * 2/3 (same as triplet)
+    // Already covered by triplet case
+
+    normalNotes = 0;
+    return 0;
+}
+
+
+//---------------------------------------------------------
 // faceValue2xml - convert Encore to MusicXML note type
 //---------------------------------------------------------
 
@@ -947,10 +982,17 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
         noteDots = calculateDots(note->m_realDuration, note->m_faceValue);
     }
     m_writer.writeDots(noteDots);
-    m_writer.writeTimeModification(note->actualNotes(), note->normalNotes());
+
+    // Detect tuplet from duration if not set in file
+    int noteActual = note->actualNotes();
+    int noteNormal = note->normalNotes();
+    if (noteActual == 0 && note->m_realDuration > 0) {
+        noteActual = detectTuplet(note->m_realDuration, note->m_faceValue, noteNormal);
+    }
+    m_writer.writeTimeModification(noteActual, noteNormal);
     const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
-    const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
+    const auto tupletState = th.newNote(noteActual, noteNormal, note->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);
 
 
@@ -1053,10 +1095,17 @@ void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr,
         restDots = calculateDots(rest->m_realDuration, rest->m_faceValue);
     }
     m_writer.writeDots(restDots);
-    m_writer.writeTimeModification(rest->actualNotes(), rest->normalNotes());
+
+    // Detect tuplet from duration if not set in file
+    int restActual = rest->actualNotes();
+    int restNormal = rest->normalNotes();
+    if (restActual == 0 && rest->m_realDuration > 0) {
+        restActual = detectTuplet(rest->m_realDuration, rest->m_faceValue, restNormal);
+    }
+    m_writer.writeTimeModification(restActual, restNormal);
     const int nstaves = (partNr < static_cast<int>(m_ef.staves().size())) ? m_ef.staves().at(partNr).m_nstaves : 1;
     m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
-    const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
+    const auto tupletState = th.newNote(restActual, restNormal, rest->m_faceValue & 0x0F);
     m_writer.writeTuplet(tupletState);
     m_writer.writeElementEnd();
 }
