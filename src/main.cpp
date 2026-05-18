@@ -39,7 +39,21 @@ static void read_file(const QString& filename, EncFile& ef)
     qDebug() << "processing file" << filename;
     QFile file(filename);
     file.open(QIODevice::ReadOnly);
-    QDataStream data(&file);
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    // Detectar formato ZBOT (cifrado) - magic "ZBOT" = 0x5A424F54
+    if (fileData.size() >= 4 && fileData.startsWith("ZBOT")) {
+        qWarning() << "ERROR: ZBOT format detected.";
+        qWarning() << "ZBOT files are encrypted and cannot be converted directly.";
+        qWarning() << "Please convert the file to SCOW format using Encore 5.x:";
+        qWarning() << "  1. Open the .enc file in Encore 5.x on Windows";
+        qWarning() << "  2. Save it (the new version will be in SCOW format)";
+        qWarning() << "  3. Use Enc2MusicXML with the converted file";
+        return;
+    }
+
+    QDataStream data(&fileData, QIODevice::ReadOnly);
     ef.read(data);
 }
 
