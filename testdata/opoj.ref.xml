@@ -68,9 +68,6 @@
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -84,6 +81,7 @@
           <normal-notes>2</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -110,9 +108,6 @@
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -126,6 +121,7 @@
           <normal-notes>2</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -137,9 +133,6 @@
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -152,9 +145,6 @@
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="start"/>
-        </notations>
       </note>
       <note>
         <rest/>
@@ -244,9 +234,6 @@
           <actual-notes>6</actual-notes>
           <normal-notes>4</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -260,6 +247,7 @@
           <normal-notes>4</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -322,9 +310,6 @@
           <actual-notes>6</actual-notes>
           <normal-notes>4</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -338,6 +323,7 @@
           <normal-notes>4</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -376,9 +362,6 @@
           <actual-notes>5</actual-notes>
           <normal-notes>4</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -392,6 +375,7 @@
           <normal-notes>4</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>

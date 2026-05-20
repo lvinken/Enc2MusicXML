@@ -394,8 +394,11 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat,
     data.skipRawData(1);
     data >> m_repeatAlternative;
 
-    // enc2ly offset 0x1E -> measStart + 0x1A
-    data.device()->seek(measStart + 0x1A);
+    // m_coda (jump sign) is a quint32 whose byte 1 holds the sign value.
+    // enc2ly addresses the sign byte at offset 0x1E (= measStart+0x1A), but
+    // we read the full quint32 starting one byte earlier so that
+    // repeat() = (m_coda >> 8) & 0xFF extracts it correctly.
+    data.device()->seek(measStart + 0x19);
     data >> m_coda;
 
     qDebug()
