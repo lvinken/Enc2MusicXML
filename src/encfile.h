@@ -99,6 +99,7 @@ public:
     CharSize charSize() const;          // chu_utf8
     int  m_nstaves              { 0 };
     bool m_showStaff            { true };  // false = hidden from printed score
+    int  m_midiProgram          { 0 };     // 1-indexed GM program (0 = not set)
 };
 
 QDebug operator<<(QDebug dbg, const EncInstrument& instr);

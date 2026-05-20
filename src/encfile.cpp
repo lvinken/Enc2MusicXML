@@ -1180,21 +1180,28 @@ bool EncTitle::read(QDataStream& data, const quint32 var_size, const CharSize ch
 {
     m_varsize = var_size;
 
+    // Determine encoding from the block's own size rather than from the TK00
+    // instrument block (which Encore 5.0.2 can write with offset <= 250 even
+    // though the TITL content is always UTF-16).
+    // ONE_BYTE total: 2 + 20*96  + 504 = 2 426
+    // TWO_BYTE total: 2 + 20*1056 + 120 = 21 242
+    const CharSize cs = (var_size >= 10000) ? CharSize::TWO_BYTES : charsize;
+
     data.skipRawData(2);
 
-    m_title = readTextItem(data, charsize);
-    for (int i = 0; i < 2; ++i) m_subtitle.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 3; ++i) m_instruction.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 4; ++i) m_author.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 2; ++i) m_header.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 2; ++i) m_footer.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 6; ++i) m_copyright.push_back(readTextItem(data, charsize));
+    m_title = readTextItem(data, cs);
+    for (int i = 0; i < 2; ++i) m_subtitle.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 3; ++i) m_instruction.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 4; ++i) m_author.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 2; ++i) m_header.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 2; ++i) m_footer.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 6; ++i) m_copyright.push_back(readTextItem(data, cs));
 
     // skip to end of TITL
-    if (charsize == CharSize::ONE_BYTE) {
+    if (cs == CharSize::ONE_BYTE) {
         data.skipRawData(504);
     }
-    else if (charsize == CharSize::TWO_BYTES) {
+    else if (cs == CharSize::TWO_BYTES) {
         data.skipRawData(120);
     }
     else {
@@ -1431,6 +1438,26 @@ bool EncFile::read(QDataStream& data)
                 recovered.append(ch);
             }
             m_instruments[n].m_name = recovered;
+        }
+    }
+
+    // Read per-instrument MIDI program from the fixed-offset table (v0xC4 only).
+    // PRG_BASE + n * PRG_STEP gives the file position of the 8-byte MIDI program
+    // entry for instrument n; all 8 bytes are identical and hold the 1-indexed
+    // GM program number (0 = not configured).
+    if (!m_header.isOldFormat() && !m_header.isVeryOldFormat()) {
+        static constexpr qint64 PRG_BASE = 2278;
+        static constexpr qint64 PRG_STEP = 2158;
+        for (int n = 0; n < static_cast<int>(m_instruments.size()); ++n) {
+            const qint64 off = PRG_BASE + static_cast<qint64>(n) * PRG_STEP;
+            if (off >= data.device()->size())
+                break;
+            if (!data.device()->seek(off))
+                break;
+            quint8 prg = 0;
+            data >> prg;
+            if (prg >= 1 && prg <= 128)
+                m_instruments[n].m_midiProgram = static_cast<int>(prg);
         }
     }
 
