@@ -865,13 +865,16 @@ static QString encRepeatToWords(const repeatType repeat)
 // notesAreInChord - determine if note1 and note2 are in a chord together
 //---------------------------------------------------------
 
-static bool notesAreInChord(const EncMeasureElemNote* const note1,
-                            const EncMeasureElemNote* const note2)
+// MIDI-recorded chords have simultaneous notes at ticks 0,1,2,... due to recording
+// latency. CHORD_MIDI_THRESHOLD defines the window for grouping them as a single chord.
+static constexpr int CHORD_MIDI_THRESHOLD = 2 * CHORD_CLUSTER_THRESHOLD;  // = 8
+
+// isChordOf - true iff note2's tick is within CHORD_MIDI_THRESHOLD of rootTick.
+static bool isChordOf(const int rootTick, const EncMeasureElemNote* const note2)
 {
-    // Notes are in a chord if they have the same tick
-    // x_offset is just visual positioning and should not affect chord detection
-    return note1 && note2
-            && note1->m_tick == note2->m_tick;
+    if (!note2 || rootTick < 0) return false;
+    const int delta = (int)note2->m_tick - rootTick;
+    return delta >= 0 && delta < CHORD_MIDI_THRESHOLD;
 }
 
 
@@ -962,14 +965,18 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
     // Tracks filtered MIDI artifact tie-senders across all voices in this measure.
     // A note with (grace1 & 0x0F) == 1 filtered by rdur<15 implies its receiver
     // (grace1 & 0x0F == 2, same staff/voice/pitch) should also be filtered.
-    constexpr int CHORD_MIDI_THRESHOLD = 2 * CHORD_CLUSTER_THRESHOLD;
     std::set<std::tuple<int,int,int>> filteredTieSenderPitches;
 
     int tick = 0;
     for (const auto v : voices) {
         TupletHandler th;  // Each voice has its own tuplet handler
-        const EncMeasureElemNote* prevnote = nullptr;
-        int prevMidiTick = -999;  // for isChordExt detection in artifact filter
+        // chordRootTick / chordRootTick2 track the tick of the last chord-root note
+        // in each pass (updated only for non-chord notes — no cascading).
+        // Used for chord detection: a note is a chord extension if its tick is within
+        // CHORD_MIDI_THRESHOLD of chordRootTick. This avoids cascading (chain detection)
+        // and handles MIDI-recorded chords where simultaneous notes land at ticks 0,1,2,...
+        int chordRootTick = -999;   // first pass
+        int chordRootTick2 = -999;  // second pass
         if (tick > 0) {
             // explicit backup to prevent error message at start of voice
             m_writer.writeBackupForward(-tick, 0);
@@ -984,19 +991,17 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
                 if (elem->m_tick > m.m_durTicks) continue;  // Skip garbage
                 if (const auto* note = dynamic_cast<const EncMeasureElemNote*>(elem)) {
-                    const bool isChord = notesAreInChord(prevnote, note);
+                    // isChord: is this note a chord extension of the current chord root?
+                    // Uses CHORD_MIDI_THRESHOLD so MIDI-recorded chords (notes at ticks
+                    // 0,1,2,3...) are grouped correctly without overflowing the measure.
+                    const bool isChord = isChordOf(chordRootTick, note);
                     if (!isChord && tick >= m.m_durTicks) continue;  // Skip extra notes
 
-                    // isChordExt uses OLD prevMidiTick (before update) — same logic as MuseScore.
-                    // Notes within CHORD_MIDI_THRESHOLD of the previous note in this voice
-                    // are chord extensions: they bypass the artifact filter even when short.
-                    const bool isChordExt = (prevMidiTick >= 0)
-                        && ((int)note->m_tick - prevMidiTick >= 0)
-                        && ((int)note->m_tick - prevMidiTick < CHORD_MIDI_THRESHOLD);
-
-                    // Update prevMidiTick before filter checks (as in MuseScore).
+                    // Update chordRootTick before filter checks (as MuseScore does with
+                    // prevMidiTick): even filtered notes establish the root for subsequent
+                    // chord-extension detection.
                     if (!isChord)
-                        prevMidiTick = (int)note->m_tick;
+                        chordRootTick = (int)note->m_tick;
 
                     // MIDI artifact filter
                     if (note->m_realDuration > 0 && note->m_realDuration < 15) {
@@ -1004,7 +1009,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                         const int fvBase = faceValue2duration(fv);
                         if (fvBase <= 15) {
                             // 64th/128th notes: filter unless tie-start or chord extension
-                            if (!m_nc.tieStart(note) && !isChordExt) {
+                            if (!m_nc.tieStart(note) && !isChord) {
                                 if ((note->m_grace1 & 0x0F) == 1)
                                     filteredTieSenderPitches.insert(
                                         { partNr, (int)v, (int)note->m_semiTonePitch });
@@ -1030,39 +1035,35 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
                     voiceElems.push_back(elem);
                     tick += isChord ? 0 : durationNote(note);
-                    prevnote = note;
                 }
                 else if (const auto* rest = dynamic_cast<const EncMeasureElemRest*>(elem)) {
                     int restDur = durationRest(rest);
                     if (restDur <= 0) continue;  // Skip invalid rests
-                    prevMidiTick = (int)elem->m_tick;
+                    chordRootTick = (int)elem->m_tick;
                     voiceElems.push_back(elem);
                     tick += restDur;
-                    prevnote = nullptr;
                 }
             }
         }
 
         // Reset for second pass
         tick = 0;
-        prevnote = nullptr;
+        chordRootTick2 = -999;  // reset for second pass
 
         // Second pass: write elements with proper tuplet handling
         for (size_t i = 0; i < voiceElems.size(); ++i) {
             const auto& elem = voiceElems[i];
 
             // Check if next NON-CHORD element is a tuplet note (for closing current tuplet)
-            // We need to skip chord notes to find the actual next musical event
             bool nextNonChordIsTuplet = false;
             bool isLastNonChordInMeasure = true;
             const EncMeasureElemNote* curAsNote = dynamic_cast<const EncMeasureElemNote*>(elem);
             for (size_t j = i + 1; j < voiceElems.size(); ++j) {
                 if (const auto* nextNote = dynamic_cast<const EncMeasureElemNote*>(voiceElems[j])) {
-                    // Check if this is a chord note (same tick as current)
-                    if (curAsNote && notesAreInChord(curAsNote, nextNote)) {
-                        continue;  // Skip chord notes
+                    // Skip chord notes (use curAsNote's tick as the root for lookahead)
+                    if (curAsNote && isChordOf((int)curAsNote->m_tick, nextNote)) {
+                        continue;
                     }
-                    // Found next non-chord note
                     nextNonChordIsTuplet = (nextNote->actualNotes() > 0 && nextNote->normalNotes() > 0);
                     isLastNonChordInMeasure = false;
                     break;
@@ -1076,7 +1077,10 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
             int duration = 0;
             if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
-                const bool isChord = notesAreInChord(prevnote, curnote);
+                // Same chord detection as first pass: compare to chord root, not previous note.
+                const bool isChord = isChordOf(chordRootTick2, curnote);
+                if (!isChord)
+                    chordRootTick2 = (int)curnote->m_tick;
 
                 // Generate forward or backup if note doesn't start at current tick position
                 if (!isChord && elem->m_tick != tick) {
@@ -1106,12 +1110,9 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                                         : WedgeType::CRESCENDO);
                 }
 
-                // Pass info about whether to force close tuplet
                 bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
-                // Pass calculated tick for tuplet grouping (m_tick from Encore can be inconsistent)
                 note(curnote, partNr, th, isChord, forceCloseTuplet, tick);
                 duration = isChord ? 0 : durationNote(curnote);
-                prevnote = curnote;
 
                 if (wedgeStop) {
                     m_writer.writeWedge(WedgeType::STOP);
@@ -1122,11 +1123,10 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                     m_writer.writeBackupForward(elem->m_tick - tick, v);
                     tick = elem->m_tick;
                 }
+                chordRootTick2 = (int)elem->m_tick;
                 bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
-                // Pass calculated tick for tuplet grouping
                 rest(currest, partNr, th, forceCloseTuplet, tick);
                 duration = durationRest(currest);
-                prevnote = nullptr;
             }
             tick += duration;
         }
