@@ -18,6 +18,7 @@
 /*****************************************************************************/
 
 #include <set>
+#include <tuple>
 
 #include <QFile>
 #include <QtDebug>
@@ -926,17 +927,26 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
     // from the expected value, simply assume all voices start at tick = 0 and no gaps
     // are present.
 
+    // Tracks filtered MIDI artifact tie-senders across all voices in this measure.
+    // A note with (grace1 & 0x0F) == 1 filtered by rdur<15 implies its receiver
+    // (grace1 & 0x0F == 2, same staff/voice/pitch) should also be filtered.
+    constexpr int CHORD_MIDI_THRESHOLD = 2 * CHORD_CLUSTER_THRESHOLD;
+    std::set<std::tuple<int,int,int>> filteredTieSenderPitches;
+
     int tick = 0;
     for (const auto v : voices) {
         TupletHandler th;  // Each voice has its own tuplet handler
         const EncMeasureElemNote* prevnote = nullptr;
+        int prevMidiTick = -999;  // for isChordExt detection in artifact filter
         if (tick > 0) {
             // explicit backup to prevent error message at start of voice
             m_writer.writeBackupForward(-tick, 0);
             tick = 0;
         }
 
-        // First pass: collect valid elements for this voice
+        // First pass: collect valid elements, applying MIDI artifact filter.
+        // The filter skips notes with realDuration < 15 that Encore records as
+        // MIDI ghost notes (not displayed in the score).
         std::vector<EncMeasureElem*> voiceElems;
         for (const auto& elem : m.measureElems()) {
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
@@ -944,6 +954,48 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 if (const auto* note = dynamic_cast<const EncMeasureElemNote*>(elem)) {
                     const bool isChord = notesAreInChord(prevnote, note);
                     if (!isChord && tick >= m.m_durTicks) continue;  // Skip extra notes
+
+                    // isChordExt uses OLD prevMidiTick (before update) — same logic as MuseScore.
+                    // Notes within CHORD_MIDI_THRESHOLD of the previous note in this voice
+                    // are chord extensions: they bypass the artifact filter even when short.
+                    const bool isChordExt = (prevMidiTick >= 0)
+                        && ((int)note->m_tick - prevMidiTick >= 0)
+                        && ((int)note->m_tick - prevMidiTick < CHORD_MIDI_THRESHOLD);
+
+                    // Update prevMidiTick before filter checks (as in MuseScore).
+                    if (!isChord)
+                        prevMidiTick = (int)note->m_tick;
+
+                    // MIDI artifact filter
+                    if (note->m_realDuration > 0 && note->m_realDuration < 15) {
+                        const quint8 fv = note->m_faceValue & 0x0F;
+                        const int fvBase = faceValue2duration(fv);
+                        if (fvBase <= 15) {
+                            // 64th/128th notes: filter unless tie-start or chord extension
+                            if (!m_nc.tieStart(note) && !isChordExt) {
+                                if ((note->m_grace1 & 0x0F) == 1)
+                                    filteredTieSenderPitches.insert(
+                                        { partNr, (int)v, (int)note->m_semiTonePitch });
+                                continue;
+                            }
+                        } else {
+                            // Longer face values: filter unless at the chord-cluster boundary
+                            // (realDuration <= CHORD_CLUSTER_THRESHOLD means it may be a
+                            // live-recorded chord root whose cluster partner fell just outside)
+                            if (note->m_realDuration > CHORD_CLUSTER_THRESHOLD)
+                                continue;
+                        }
+                    }
+
+                    // Cascade filter: tie-receiver whose sender was filtered
+                    if ((note->m_grace1 & 0x0F) == 2) {
+                        auto key = std::make_tuple(partNr, (int)v, (int)note->m_semiTonePitch);
+                        if (filteredTieSenderPitches.count(key)) {
+                            filteredTieSenderPitches.erase(key);
+                            continue;
+                        }
+                    }
+
                     voiceElems.push_back(elem);
                     tick += isChord ? 0 : durationNote(note);
                     prevnote = note;
@@ -951,6 +1003,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 else if (const auto* rest = dynamic_cast<const EncMeasureElemRest*>(elem)) {
                     int restDur = durationRest(rest);
                     if (restDur <= 0) continue;  // Skip invalid rests
+                    prevMidiTick = (int)elem->m_tick;
                     voiceElems.push_back(elem);
                     tick += restDur;
                     prevnote = nullptr;
