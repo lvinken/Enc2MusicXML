@@ -878,6 +878,28 @@ static bool isChordOf(const int rootTick, const EncMeasureElemNote* const note2)
 }
 
 
+// theoreticalDurTicks - the time-signature-correct measure duration in Encore ticks.
+// m_durTicks comes from the raw MIDI recording and can be off by a few ticks.
+// This computes what the measure *should* be from the written time signature.
+static int theoreticalDurTicks(const EncMeasure& m)
+{
+    if (m.m_timeSigNum == 0 || m.m_timeSigDen == 0)
+        return m.m_durTicks;
+    int beatTicks = 0;
+    switch (m.m_timeSigDen) {
+    case 1:  beatTicks = 960; break;
+    case 2:  beatTicks = 480; break;
+    case 4:  beatTicks = 240; break;
+    case 8:  beatTicks = 120; break;
+    case 16: beatTicks = 60;  break;
+    case 32: beatTicks = 30;  break;
+    case 64: beatTicks = 15;  break;
+    default: beatTicks = 240; break;
+    }
+    return m.m_timeSigNum * beatTicks;
+}
+
+
 //---------------------------------------------------------
 // measure - write a measure of a part
 //---------------------------------------------------------
@@ -983,13 +1005,18 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
             tick = 0;
         }
 
+        // Use time-signature-correct measure duration, not the raw MIDI m_durTicks.
+        // For MIDI-recorded files, m_durTicks can be a few ticks off from the
+        // theoretical value (e.g. 958 or 962 instead of 960 for 4/4).
+        const int measureDur = theoreticalDurTicks(m);
+
         // First pass: collect valid elements, applying MIDI artifact filter.
         // The filter skips notes with realDuration < 15 that Encore records as
         // MIDI ghost notes (not displayed in the score).
         std::vector<EncMeasureElem*> voiceElems;
         for (const auto& elem : m.measureElems()) {
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
-                if (elem->m_tick > m.m_durTicks) continue;  // Skip garbage
+                if (elem->m_tick > measureDur) continue;  // Skip garbage
                 if (const auto* note = dynamic_cast<const EncMeasureElemNote*>(elem)) {
                     // isChord: is this note a chord extension of the current chord root?
                     // Uses CHORD_MIDI_THRESHOLD so MIDI-recorded chords (notes at ticks
@@ -1001,7 +1028,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                         // long-realDuration note (e.g. a MIDI-recorded dotted half at
                         // beat 3 of a 4/4 bar) from pushing tick past m_durTicks.
                         const int noteDur = durationNote(note);
-                        if (tick >= m.m_durTicks || tick + noteDur > m.m_durTicks)
+                        if (tick >= measureDur || tick + noteDur > measureDur)
                             continue;
                     }
 
@@ -1151,9 +1178,9 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
         // complete measure.  This handles artefact-filtered notes that leave a
         // small gap at the end, and non-standard time signatures whose tick
         // count doesn't divide evenly with divisions=240.
-        if (tick < m.m_durTicks) {
-            m_writer.writeBackupForward(m.m_durTicks - tick, v);
-            tick = m.m_durTicks;
+        if (tick < measureDur) {
+            m_writer.writeBackupForward(measureDur - tick, v);
+            tick = measureDur;
         }
 
         // Reset tuplet handler state for next voice
