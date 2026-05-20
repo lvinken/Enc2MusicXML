@@ -51,6 +51,11 @@ enum class CharSize : char {
     TWO_BYTES
 };
 
+// Notes within this many Encore ticks of each other are treated as simultaneous
+// (live-recorded chord timing drift).  Used in calculateRealDurations() to
+// give the first note of a chord a realistic duration instead of 1-3 ticks.
+static constexpr int CHORD_CLUSTER_THRESHOLD = 4;
+
 
 //---------------------------------------------------------
 // the header ("SCOW") block

@@ -560,9 +560,15 @@ void EncMeasure::calculateRealDurations()
         for (size_t i = 0; i < elems.size(); ++i) {
             qint16 nextTick;
             if (i + 1 < elems.size()) {
-                // Find next element with different tick (skip chord notes with same tick)
+                // Skip exact chord notes (same tick), then also skip notes within
+                // CHORD_CLUSTER_THRESHOLD ticks: live-recorded chords have individual
+                // notes offset by 1-3 ticks, which would otherwise produce tiny rdur.
                 size_t j = i + 1;
                 while (j < elems.size() && elems[j]->m_tick == elems[i]->m_tick) {
+                    ++j;
+                }
+                while (j < elems.size()
+                       && elems[j]->m_tick - elems[i]->m_tick < CHORD_CLUSTER_THRESHOLD) {
                     ++j;
                 }
                 if (j < elems.size()) {
