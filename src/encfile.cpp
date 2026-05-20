@@ -190,28 +190,42 @@ EncInstrument::EncInstrument()
 }
 
 
-bool EncInstrument::read(QDataStream& data, const quint32 var_size)
+bool EncInstrument::read(QDataStream& data, const quint32 var_size, bool probeEncoding)
 {
     qDebug() << "EncInstrument::read()";
     m_offset = var_size;
     m_offset &= 0xFFFF; // TODO: ritmo.enc fails when m_offset is assumed to be 32 bit
+
+    // Encore 5.0.2 v0xC4 files write instrument names as UTF-16 LE even when
+    // the offset field is <= 250 (which charSize() would classify as ONE_BYTE).
+    // Probe the first two bytes: if b0 is printable ASCII and b1 is 0x00,
+    // the name is UTF-16 LE.
+    CharSize cs = charSize();
+    if (probeEncoding && cs == CharSize::ONE_BYTE) {
+        const qint64 savedPos = data.device()->pos();
+        quint8 b0 = 0, b1 = 0;
+        data >> b0 >> b1;
+        data.device()->seek(savedPos);
+        if (b0 >= 0x20 && b0 < 0x7F && b1 == 0x00)
+            cs = CharSize::TWO_BYTES;
+    }
+
     qDebug()
             << "m_offset" << m_offset
-            << "charSize" << static_cast<int>(charSize())
+            << "charSize" << static_cast<int>(cs)
                ;
 
-    int nread = 8; // # bytes read sofar
-    // read the name as null-terminated 8 or 16-bit chars
+    int nread = 8; // # bytes read so far
     QChar ch;
     bool ready = false;
     while (!ready) {
-        if (charSize() == CharSize::ONE_BYTE) {
+        if (cs == CharSize::ONE_BYTE) {
             quint8 b;
             data >> b;
             ch = QChar(char16_t(b));
             nread += 1;
         }
-        else if (charSize() == CharSize::TWO_BYTES) {
+        else if (cs == CharSize::TWO_BYTES) {
             data >> ch;
             nread += 2;
         }
@@ -1372,7 +1386,10 @@ bool EncFile::read(QDataStream& data)
         }
         else if (isEncInstrumentMagic(next_id)) {
             EncInstrument instrument;
-            instrument.read(data, var_size);
+            // Probe encoding for v0xC4: Encore 5.0.2 writes names as UTF-16 LE
+            // even when the offset field is <= 250 (ONE_BYTE by charSize()).
+            const bool probe = !m_header.isOldFormat() && !m_header.isVeryOldFormat();
+            instrument.read(data, var_size, probe);
             m_instruments.push_back(instrument);
             charsize = instrument.charSize();
         }
@@ -1381,6 +1398,42 @@ bool EncFile::read(QDataStream& data)
     }
 
     fixupInstruments(m_instruments, m_header.m_instrumentCount);
+
+    // Encore 5.0.2 can omit TK block headers for some instruments while still
+    // writing name content at the formula position NAME_BASE + n * NAME_STEP.
+    // Pad the vector to instrumentCount and recover missing names.
+    while (static_cast<int>(m_instruments.size()) < m_header.m_instrumentCount)
+        m_instruments.emplace_back();
+
+    if (!m_header.isOldFormat() && !m_header.isVeryOldFormat()) {
+        static constexpr qint64 NAME_BASE = 202;   // header(194) + TK header(8)
+        static constexpr qint64 NAME_STEP = 2158;
+        for (int n = 0; n < static_cast<int>(m_instruments.size()); ++n) {
+            if (!m_instruments.at(n).m_name.isEmpty())
+                continue;
+            const qint64 off = NAME_BASE + static_cast<qint64>(n) * NAME_STEP;
+            if (off + 2 >= data.device()->size())
+                break;
+            if (!data.device()->seek(off))
+                break;
+            quint8 b0 = 0, b1 = 0;
+            data >> b0 >> b1;
+            if (b0 < 0x20 || b0 >= 0x7F || b1 != 0x00)
+                continue;  // not UTF-16 LE
+            data.device()->seek(off);
+            QString recovered;
+            while (!data.atEnd()) {
+                quint8 lo = 0, hi = 0;
+                data >> lo >> hi;
+                const QChar ch = QChar(char16_t((static_cast<quint16>(hi) << 8) | lo));
+                if (ch == u'\0')
+                    break;
+                recovered.append(ch);
+            }
+            m_instruments[n].m_name = recovered;
+        }
+    }
+
     if (!m_lines.empty()) {
         countStaves(m_instruments, m_lines.at(0).lineStaffData());
         propagateStaffVisibility(m_instruments, m_lines.at(0).lineStaffData());

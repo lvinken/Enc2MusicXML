@@ -92,7 +92,7 @@ class EncInstrument                     // instrumento
 {
 public:
     EncInstrument();
-    bool read(QDataStream& data, const quint32 var_size);
+    bool read(QDataStream& data, const quint32 var_size, bool probeEncoding = false);
     QString m_id;
     quint32 m_offset            { 0 };
     QString m_name;
