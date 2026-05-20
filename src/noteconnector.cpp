@@ -369,11 +369,16 @@ bool NoteConnector::tieStart(const EncMeasureElemNote* const note) const
 
     for (const auto elem : m.measureElems()) {
         if (const EncMeasureElemTie* const tie = dynamic_cast<const EncMeasureElemTie* const>(elem)) {
-            // Match tie to note by tick, voice, and staff only
-            // xoffset is a visual offset for tie placement, not for matching
-            if (note->m_tick == tie->m_tick
-                    && note->m_voice == tie->m_voice
-                    && note->m_staffIdx == tie->m_staffIdx) {
+            // Only outgoing ties (isTieStart) indicate that this note sends a tie.
+            // Arc-only markers (direction != 0xfe) are visual endpoints and do not.
+            if (!tie->m_isTieStart)
+                continue;
+            // Match by voice and staff; tolerate up to CHORD_CLUSTER_THRESHOLD ticks
+            // of timing drift between the TIE element and the note (live recording).
+            const int dt = static_cast<int>(note->m_tick) - static_cast<int>(tie->m_tick);
+            if (note->m_voice == tie->m_voice
+                    && note->m_staffIdx == tie->m_staffIdx
+                    && dt >= 0 && dt < CHORD_CLUSTER_THRESHOLD) {
                 return true;
             }
         }

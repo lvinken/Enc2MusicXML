@@ -726,10 +726,22 @@ bool EncMeasureElemTie::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemTie::read()";
 
-    EncMeasureElem::read(data);
-    data.skipRawData(5);
-    data >> m_xoffset;
-    int toSkip = m_size - 5 - 6;
+    EncMeasureElem::read(data);  // reads size(+3) and staffIdx(+4); stream now at +5
+
+    // Byte at +5 from elemStart encodes tie direction:
+    //   0xfe = outgoing tie (TIE-START): note at this tick sends a tie forward.
+    //   other = arc-only marker: visual endpoint of an incoming tie arc.
+    quint8 dirByte = 0;
+    if (m_size > 5)
+        data >> dirByte;
+    m_isTieStart = (dirByte == 0xfe);
+
+    // Skip to xoffset (at +10 from elemStart = +5 bytes from current position
+    // if dirByte was read, or +5 if not).
+    const int read5 = (m_size > 5) ? 1 : 0;
+    data.skipRawData(4);    // skip bytes +6..+9
+    data >> m_xoffset;      // read xoffset at +10
+    const int toSkip = m_size - 5 - read5 - 5 - 1;
     if (toSkip > 0) data.skipRawData(toSkip);   // skip to end
 
     qDebug()

@@ -259,6 +259,7 @@ class EncMeasureElemTie : public EncMeasureElem
 public:
     EncMeasureElemTie(quint16 tick, quint8  type, quint8 voice);
     bool read(QDataStream& data);
+    bool m_isTieStart { false };  // true when direction byte == 0xfe (outgoing tie)
 };
 
 
