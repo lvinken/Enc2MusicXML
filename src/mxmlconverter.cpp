@@ -717,14 +717,34 @@ static int calculateDuration(const quint8 faceValue, const quint8 dotControl,
 // durationNote - determine note's duration
 //---------------------------------------------------------
 
+// isStandardDuration - true iff d matches a known MusicXML note duration value.
+// Non-standard values (e.g. raw MIDI durations in live-recorded files) are excluded
+// so that face-value-based duration is used instead.
+static bool isStandardDuration(const int d)
+{
+    switch (d) {
+    case 960: case 720: case 480: case 360: case 240: case 180:
+    case 120: case 90:  case 60:  case 45:  case 30:  case 15: case 7:
+    // triplets
+    case 640: case 320: case 160: case 80:  case 40:  case 20:
+    // triple-dotted
+    case 840: case 420: case 210: case 105:
+        return true;
+    default:
+        return false;
+    }
+}
+
 static int durationNote(const EncMeasureElemNote* const note)
 {
     if (isGrace(note)) {
         return 0;
     }
 
-    // Use real duration if available (trust Encore file for tied notes across measures)
-    if (note->m_realDuration > 0) {
+    // Use realDuration only when it is a standard note-length value.
+    // For live-recorded (MIDI-input) files the raw tick difference can be much
+    // larger than the written duration and would overflow measures if used directly.
+    if (note->m_realDuration > 0 && isStandardDuration(note->m_realDuration)) {
         return note->m_realDuration;
     }
 
@@ -739,11 +759,6 @@ static int durationNote(const EncMeasureElemNote* const note)
 
 static int durationRest(const EncMeasureElemRest* const rest)
 {
-    // Use real duration if available
-    if (rest->m_realDuration > 0) {
-        return rest->m_realDuration;
-    }
-
     return calculateDuration(rest->m_faceValue, rest->m_dotControl,
                              rest->actualNotes(), rest->normalNotes());
 }
@@ -1154,9 +1169,8 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     }
 
     m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
-    // Use correctNoteType to fix type when duration doesn't match faceValue (common Encore bug)
     m_writer.writeElement("type", correctNoteType(noteDur, note->m_faceValue));
-    // Always calculate dots from actual duration (m_dotControl is unreliable in old format files)
+    // Always calculate dots from written duration (m_dotControl is unreliable in old format files)
     const int noteDots = calculateDots(noteDur, note->m_faceValue);
     m_writer.writeDots(noteDots);
 

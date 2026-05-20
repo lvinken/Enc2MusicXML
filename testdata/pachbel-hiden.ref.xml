@@ -6772,8 +6772,8 @@
       </note>
       <note>
         <rest/>
-        <duration>480</duration>
-        <type>half</type>
+        <duration>240</duration>
+        <type>quarter</type>
       </note>
     </measure>
     <measure number="26">
@@ -6794,8 +6794,8 @@
       </note>
       <note>
         <rest/>
-        <duration>480</duration>
-        <type>half</type>
+        <duration>240</duration>
+        <type>quarter</type>
       </note>
     </measure>
     <measure number="28">
@@ -6816,8 +6816,8 @@
       </note>
       <note>
         <rest/>
-        <duration>480</duration>
-        <type>half</type>
+        <duration>240</duration>
+        <type>quarter</type>
       </note>
     </measure>
     <measure number="30">

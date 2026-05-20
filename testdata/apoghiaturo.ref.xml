@@ -170,7 +170,7 @@
           <step>C</step>
           <octave>5</octave>
         </pitch>
-        <duration>675</duration>
+        <duration>240</duration>
         <type>quarter</type>
       </note>
     </measure>
@@ -221,7 +221,7 @@
           <step>B</step>
           <octave>4</octave>
         </pitch>
-        <duration>675</duration>
+        <duration>240</duration>
         <type>quarter</type>
       </note>
     </measure>
