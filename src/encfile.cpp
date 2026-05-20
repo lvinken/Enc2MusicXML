@@ -287,7 +287,14 @@ bool EncLineStaffData::read(QDataStream& data)
     m_clef = static_cast<clefType>(ct);
     data >> m_key;
     data >> m_pageIdx;
-    data.skipRawData(3);
+    // Bytes +17, +18, +19: the third byte encodes staff visibility.
+    // 0x00 = hidden from score; any non-zero value = visible.
+    // Verified by binary diff of files saved with/without a hidden staff.
+    quint8 skip0, skip1, showByte;
+    data >> skip0 >> skip1 >> showByte;
+    m_showStaff = (showByte != 0);
+    (void)skip0;
+    (void)skip1;
     quint8 st;
     data >> st;
     m_staffType = static_cast<staffType>(st);
@@ -1307,6 +1314,25 @@ static void countStaves(std::vector<EncInstrument>& instruments, const std::vect
 
 
 //---------------------------------------------------------
+// propagateStaffVisibility - copy showStaff from the first matching
+// EncLineStaffData entry into each EncInstrument.
+//---------------------------------------------------------
+
+static void propagateStaffVisibility(std::vector<EncInstrument>& instruments,
+                                     const std::vector<EncLineStaffData>& lineStaffData)
+{
+    for (unsigned int i = 0; i < instruments.size(); ++i) {
+        for (const auto& staff : lineStaffData) {
+            if (staff.instrumentIndex() == i) {
+                instruments[i].m_showStaff = staff.m_showStaff;
+                break;
+            }
+        }
+    }
+}
+
+
+//---------------------------------------------------------
 // EncFile
 //---------------------------------------------------------
 
@@ -1357,6 +1383,7 @@ bool EncFile::read(QDataStream& data)
     fixupInstruments(m_instruments, m_header.m_instrumentCount);
     if (!m_lines.empty()) {
         countStaves(m_instruments, m_lines.at(0).lineStaffData());
+        propagateStaffVisibility(m_instruments, m_lines.at(0).lineStaffData());
     }
     addSpannerEnds(m_measures);
 

@@ -97,7 +97,8 @@ public:
     quint32 m_offset            { 0 };
     QString m_name;
     CharSize charSize() const;          // chu_utf8
-    int m_nstaves               { 0 };
+    int  m_nstaves              { 0 };
+    bool m_showStaff            { true };  // false = hidden from printed score
 };
 
 QDebug operator<<(QDebug dbg, const EncInstrument& instr);
@@ -159,6 +160,7 @@ public:
     clefType  m_clef            { clefType::G };        // clef
     quint8  m_key               { 0 };                  // tonalo
     quint8  m_pageIdx           { 0 };
+    bool    m_showStaff         { true };               // byte +19: 0x00 = hidden
     staffType  m_staffType      { staffType::MELODY };  // tipo
     quint8  m_instrStaffIdx     { 0 };
 };
