@@ -1082,10 +1082,17 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 if (!isChord)
                     chordRootTick2 = (int)curnote->m_tick;
 
-                // Generate forward or backup if note doesn't start at current tick position
-                if (!isChord && elem->m_tick != tick) {
-                    m_writer.writeBackupForward(elem->m_tick - tick, v);
-                    tick = elem->m_tick;
+                // Generate forward only for real musical gaps, not MIDI timing noise.
+                // The MuseScore importer never uses raw Encore ticks for positioning —
+                // it accumulates written durations (cumTick). We do the same: only
+                // forward/backup when the gap exceeds CHORD_MIDI_THRESHOLD, which
+                // distinguishes a real rest-gap from MIDI latency jitter (1-7 ticks).
+                if (!isChord) {
+                    const int gap = (int)elem->m_tick - tick;
+                    if (gap > CHORD_MIDI_THRESHOLD) {
+                        m_writer.writeBackupForward(gap, v);
+                        tick = (int)elem->m_tick;
+                    }
                 }
 
                 const auto direction = m_nc.direction(curnote);
@@ -1119,9 +1126,10 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 }
             }
             else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-                if (elem->m_tick != tick) {
-                    m_writer.writeBackupForward(elem->m_tick - tick, v);
-                    tick = elem->m_tick;
+                const int gap = (int)elem->m_tick - tick;
+                if (gap > CHORD_MIDI_THRESHOLD) {
+                    m_writer.writeBackupForward(gap, v);
+                    tick = (int)elem->m_tick;
                 }
                 chordRootTick2 = (int)elem->m_tick;
                 bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
