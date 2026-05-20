@@ -995,7 +995,15 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                     // Uses CHORD_MIDI_THRESHOLD so MIDI-recorded chords (notes at ticks
                     // 0,1,2,3...) are grouped correctly without overflowing the measure.
                     const bool isChord = isChordOf(chordRootTick, note);
-                    if (!isChord && tick >= m.m_durTicks) continue;  // Skip extra notes
+                    if (!isChord) {
+                        // Skip if the measure is already full, OR if this note's written
+                        // duration would overflow it.  The second check prevents a single
+                        // long-realDuration note (e.g. a MIDI-recorded dotted half at
+                        // beat 3 of a 4/4 bar) from pushing tick past m_durTicks.
+                        const int noteDur = durationNote(note);
+                        if (tick >= m.m_durTicks || tick + noteDur > m.m_durTicks)
+                            continue;
+                    }
 
                     // Update chordRootTick before filter checks (as MuseScore does with
                     // prevMidiTick): even filtered notes establish the root for subsequent
@@ -1137,6 +1145,15 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 duration = durationRest(currest);
             }
             tick += duration;
+        }
+
+        // Fill any remaining gap to the measure boundary so MuseScore sees a
+        // complete measure.  This handles artefact-filtered notes that leave a
+        // small gap at the end, and non-standard time signatures whose tick
+        // count doesn't divide evenly with divisions=240.
+        if (tick < m.m_durTicks) {
+            m_writer.writeBackupForward(m.m_durTicks - tick, v);
+            tick = m.m_durTicks;
         }
 
         // Reset tuplet handler state for next voice

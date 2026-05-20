@@ -47,6 +47,10 @@
         <duration>240</duration>
         <type>quarter</type>
       </note>
+      <forward>
+        <duration>469</duration>
+        <voice>1</voice>
+      </forward>
     </measure>
     <measure number="2"/>
     <measure number="3"/>
