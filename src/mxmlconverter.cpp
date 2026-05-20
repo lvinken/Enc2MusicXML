@@ -396,6 +396,18 @@ bool MxmlConverter::isTablature(const int partNr) const
 
 
 //---------------------------------------------------------
+// isHidden - check if a part is hidden from the printed score
+//---------------------------------------------------------
+
+bool MxmlConverter::isHidden(const int partNr) const
+{
+    if (static_cast<size_t>(partNr) < m_ef.staves().size())
+        return !m_ef.staves().at(partNr).m_showStaff;
+    return false;
+}
+
+
+//---------------------------------------------------------
 // convertEncToMxml - convert Encore to MusicXML
 //---------------------------------------------------------
 
@@ -1165,8 +1177,10 @@ void MxmlConverter::partList()
     m_writer.writeElementStart("part-list");
     int xmlPartNr = 0;
     for (size_t i = 0; i < m_ef.staves().size(); ++i) {
-        if (isTablature(i)) {
-            qDebug() << "Skipping tablature part" << i;
+        if (isTablature(i) || isHidden(i)) {
+            qDebug() << "Skipping part" << i
+                     << "(tablature:" << isTablature(i)
+                     << "hidden:" << isHidden(i) << ")";
             continue;
         }
         ++xmlPartNr;
@@ -1184,9 +1198,8 @@ void MxmlConverter::parts()
 {
     int xmlPartNr = 0;
     for (unsigned int count = 0; count < m_ef.staves().size(); ++count) {
-        if (isTablature(count)) {
-            continue;  // Skip tablature parts
-        }
+        if (isTablature(count) || isHidden(count))
+            continue;
         ++xmlPartNr;
         part(count, xmlPartNr);
     }
@@ -1247,7 +1260,7 @@ void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr,
 
 void MxmlConverter::scorePart(const int n, const EncInstrument &instr)
 {
-    m_writer.writeScorePart(n, instr.m_name);
+    m_writer.writeScorePart(n, instr.m_name, instr.m_midiProgram);
 }
 
 

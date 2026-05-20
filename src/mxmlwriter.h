@@ -59,7 +59,7 @@ public:
     void writePitch(const char step, const int alter, const int octave);
     void writeRepeatLeft(const bool coda, const bool segno);
     void writeRepeatRight(const QString& words);
-    void writeScorePart(const int n, const QString& instr);
+    void writeScorePart(const int n, const QString& instr, const int midiProgram = 0);
     void writeSlur(const StartStop startstop, const int number = 1);
     void writeStaff(const int nstaves, const int staff);
     void writeStaves(const int nstaves);

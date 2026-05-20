@@ -401,11 +401,22 @@ void MxmlWriter::writeRepeatRight(const QString& words)
 // writeScorePart - write score part ncontaining instrument instr
 //---------------------------------------------------------
 
-void MxmlWriter::writeScorePart(const int n, const QString& instr)
+void MxmlWriter::writeScorePart(const int n, const QString& instr, const int midiProgram)
 {
     m_xml.writeStartElement("score-part");
     m_xml.writeAttribute("id", QString("P%1").arg(n));
     m_xml.writeTextElement("part-name", instr);
+    if (midiProgram > 0) {
+        m_xml.writeStartElement("score-instrument");
+        m_xml.writeAttribute("id", QString("P%1-I1").arg(n));
+        m_xml.writeTextElement("instrument-name", instr);
+        m_xml.writeEndElement();
+        m_xml.writeStartElement("midi-instrument");
+        m_xml.writeAttribute("id", QString("P%1-I1").arg(n));
+        m_xml.writeTextElement("midi-channel", QString::number(n));
+        m_xml.writeTextElement("midi-program", QString::number(midiProgram));
+        m_xml.writeEndElement();
+    }
     m_xml.writeEndElement();
 }
 
