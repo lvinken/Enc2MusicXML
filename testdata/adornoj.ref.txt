@@ -89,7 +89,7 @@ N mezuroj  :    6
 	Ripetsalto: 0x0
 	Saltsigno : \mark "¿saltsigno?"
  Objektoj (en liniaroj):
- ->-. [0;132 -> 77;65] (vocho: 0)
+ ->-. [0;132 -> 0;0] (vocho: 0)
 --------------
 ---> Mezuro 4
 	Grando    : 2 B

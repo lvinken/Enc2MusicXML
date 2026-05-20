@@ -23,6 +23,7 @@
 //---------------------------------------------------------
 
 #include <QtDebug>
+#include <QIODevice>
 
 #include "encfile.h"
 
@@ -46,7 +47,7 @@ static bool readMagic(QDataStream& data, QString& magic)
     for (int i = 0; i < 4 && !data.atEnd(); ++i) {
         quint8 ch;
         data >> ch;
-        magic.append(ch);
+        magic.append(QChar(ch));
     }
     qDebug()
             << "filepos" << hexString(data.device()->pos() - 4)
@@ -99,14 +100,14 @@ static QString findNextKnownMagic(QDataStream& data)
     for (int i = 0; i < 4 && !data.atEnd(); ++i) {
         quint8 ch;
         data >> ch;
-        magic.append(ch);
+        magic.append(QChar(ch));
     }
 
     while (!isKnownMagic(magic) && !data.atEnd()) {
         magic.remove(0, 1);
         quint8 ch;
         data >> ch;
-        magic.append(ch);
+        magic.append(QChar(ch));
     }
 
     if (!isKnownMagic(magic))
@@ -204,7 +205,7 @@ bool EncInstrument::read(QDataStream& data, const quint32 var_size)
         if (charSize() == CharSize::ONE_BYTE) {
             quint8 b;
             data >> b;
-            ch = b;
+            ch = QChar(b);
             nread += 1;
         }
         else if (charSize() == CharSize::TWO_BYTES) {
@@ -422,7 +423,7 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
             qDebug()
                     << "filepos" << hexString(data.device()->pos() - 1)
                     << "unsupported elemType" << type;
-            exit(1);
+            elem = new EncMeasureElemUnknown(tick, type, voice);
         }
         //qDebug() << "elem:" << elem;
         elem->read(data);
@@ -612,23 +613,29 @@ bool EncMeasureElemOrnament::read(QDataStream& data)
     qDebug() << "EncMeasureElemOrnament::read()";
 
     EncMeasureElem::read(data);
-    data >> m_tipo;
-    data.skipRawData(4);
-    data >> m_xoffset;
-    data.skipRawData(7);
-    data >> m_al_mezuro;
-    data.skipRawData(1);
-    data >> m_xoffset2;
-    data.skipRawData(5);
-    data >> m_speguleco;
+
+    // rem tracks bytes remaining in ornament-specific area (m_size minus 5-byte element header)
+    int rem = qMax(0, m_size - 5);
+    auto rd8 = [&](quint8& f) { if (rem > 0) { data >> f; --rem; } };
+    auto sk  = [&](int n)     { int t = qMin(n, rem); if (t > 0) { data.skipRawData(t); rem -= t; } };
+
+    rd8(m_tipo);
+    sk(4);
+    rd8(m_xoffset);
+    sk(7);
+    rd8(m_al_mezuro);
+    sk(1);
+    rd8(m_xoffset2);
+    sk(5);
+    rd8(m_speguleco);
     m_speguleco &= 3;
-    data.skipRawData(1);
-    data >> m_noto;
-    data.skipRawData(1);
-    data >> m_tempo;
-    data.skipRawData(1);
-    data >> m_tind;
-    data.skipRawData(m_size - 5 - 28);     // skip to end
+    sk(1);
+    rd8(m_noto);
+    sk(1);
+    rd8(m_tempo);
+    sk(1);
+    rd8(m_tind);
+    if (rem > 0) data.skipRawData(rem);
 
     qDebug()
             << "m_tipo" << m_tipo
@@ -701,7 +708,7 @@ bool EncMeasureElemChord::read(QDataStream& data)
             quint8 upper;
             data >> upper;
             ++j;
-            QChar ch = (upper << 8) + lower;
+            QChar ch = QChar((upper << 8) + lower);
             if (ch == '\0')
                 done = true;
             if (!done)
@@ -946,7 +953,7 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
             quint8 lower;
             data >> lower;
             ++j;
-            QChar ch = lower;
+            QChar ch = QChar(lower);
             if (ch == '\0')
                 done = true;
             if (!done)
@@ -961,7 +968,7 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
             quint8 upper;
             data >> upper;
             ++j;
-            QChar ch = (upper << 8) + lower;
+            QChar ch = QChar((upper << 8) + lower);
             if (ch == '\0')
                 done = true;
             if (!done)
