@@ -723,12 +723,16 @@ static int calculateDuration(const quint8 faceValue, const quint8 dotControl,
 static bool isStandardDuration(const int d)
 {
     switch (d) {
-    case 960: case 720: case 480: case 360: case 240: case 180:
-    case 120: case 90:  case 60:  case 45:  case 30:  case 15: case 7:
-    // triplets
-    case 640: case 320: case 160: case 80:  case 40:  case 20:
-    // triple-dotted
+    // Plain note durations (whole..128th)
+    case 960: case 480: case 240: case 120: case 60: case 30: case 15: case 7:
+    // Single-dotted (base × 3/2)
+    case 720: case 360: case 180: case 90: case 45:
+    // Double-dotted (base × 7/4): 480×7/4=840, 240×7/4=420, 120×7/4=210, 60×7/4=105
     case 840: case 420: case 210: case 105:
+    // Triple-dotted (base × 15/8): 480×15/8=900, 240×15/8=450, 120×15/8=225
+    case 900: case 450: case 225:
+    // Triplets (base × 2/3)
+    case 640: case 320: case 160: case 80: case 40: case 20:
         return true;
     default:
         return false;
@@ -741,15 +745,28 @@ static int durationNote(const EncMeasureElemNote* const note)
         return 0;
     }
 
-    // Use realDuration only when it is a standard note-length value.
+    // Use realDuration when it encodes a valid written duration:
+    // - a standard note length (plain, dotted, triplet), OR
+    // - a value that matches the face-value note under a recognised tuplet ratio.
     // For live-recorded (MIDI-input) files the raw tick difference can be much
-    // larger than the written duration and would overflow measures if used directly.
-    if (note->m_realDuration > 0 && isStandardDuration(note->m_realDuration)) {
-        return note->m_realDuration;
+    // larger than the written duration (e.g. 2564 in a 960-tick measure) and
+    // would overflow if used directly; those fall through to the face value.
+    if (note->m_realDuration > 0) {
+        if (isStandardDuration(note->m_realDuration))
+            return note->m_realDuration;
+        // Tuplet check: if detectTuplet recognises this as a rational tuplet of
+        // the face-value note, use realDuration (e.g. 48 = 16th × 4/5 quintuplet).
+        int dummy = 0;
+        if (detectTuplet(note->m_realDuration, note->m_faceValue, dummy) > 0)
+            return note->m_realDuration;
     }
 
-    return calculateDuration(note->m_faceValue, note->m_dotControl,
-                             note->actualNotes(), note->normalNotes());
+    // Fall back to the plain face-value duration.
+    // The Encore dotControl byte is not reliably a dot count — the MuseScore
+    // importer ignores it and infers dots from realDuration instead.
+    // Applying dotControl here produces non-standard values (e.g. 135 from a
+    // 16th with dotControl=2) that make <duration> inconsistent with <type>.
+    return faceValue2duration(note->m_faceValue & 0x0F);
 }
 
 
