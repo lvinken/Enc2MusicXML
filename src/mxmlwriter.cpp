@@ -252,6 +252,50 @@ void MxmlWriter::writeEnd()
 
 
 //---------------------------------------------------------
+// writeGapRest - write a rest to fill a timing gap in a voice.
+// Used instead of <forward> so that MuseScore counts the duration
+// toward the voice total (MuseScore ignores <forward> for this purpose).
+// For non-standard durations no <type> is written; MuseScore infers
+// the type from the <duration> value.
+//---------------------------------------------------------
+
+static const char* durationToType(const int d)
+{
+    switch (d) {
+    case 960: return "whole";
+    case 720: case 480: return "half";
+    case 360: case 240: return "quarter";
+    case 180: case 120: return "eighth";
+    case  90: case  60: return "16th";
+    case  45: case  30: return "32nd";
+    case  15: return "64th";
+    case   7: return "128th";
+    default:  return nullptr;
+    }
+}
+
+void MxmlWriter::writeGapRest(const int duration, const int voice, const int staff)
+{
+    if (duration <= 0) return;
+    m_xml.writeStartElement("note");
+    m_xml.writeEmptyElement("rest");
+    m_xml.writeTextElement("duration", QString::number(duration));
+    const char* type = durationToType(duration);
+    if (type) {
+        m_xml.writeTextElement("type", type);
+        // dots for dotted values
+        if (duration == 720 || duration == 360 || duration == 180
+                || duration == 90 || duration == 45) {
+            m_xml.writeEmptyElement("dot");
+        }
+    }
+    m_xml.writeTextElement("voice", QString::number(voice + 1));
+    if (staff > 0) m_xml.writeTextElement("staff", QString::number(staff));
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
 // writeGrace - write fermata
 //---------------------------------------------------------
 

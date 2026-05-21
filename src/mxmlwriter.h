@@ -51,6 +51,7 @@ public:
     void writeElementEnd();
     void writeEnd();
     void writeFermata();
+    void writeGapRest(const int duration, const int voice, const int staff);
     void writeGrace(const GraceType type);
     void writeIdentification(const QString& author, const QString& lyricist, const QString& rights, const QString& software);
     void writeKey(const int fifths);

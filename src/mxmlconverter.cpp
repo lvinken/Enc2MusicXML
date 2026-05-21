@@ -1117,18 +1117,13 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 if (!isChord)
                     chordRootTick2 = (int)curnote->m_tick;
 
-                // Generate forward only for real musical gaps, not MIDI timing noise.
-                // The MuseScore importer never uses raw Encore ticks for positioning —
-                // it accumulates written durations (cumTick). We do the same: only
-                // forward/backup when the gap exceeds CHORD_MIDI_THRESHOLD, which
-                // distinguishes a real rest-gap from MIDI latency jitter (1-7 ticks).
-                if (!isChord) {
-                    const int gap = (int)elem->m_tick - tick;
-                    if (gap > CHORD_MIDI_THRESHOLD) {
-                        m_writer.writeBackupForward(gap, v);
-                        tick = (int)elem->m_tick;
-                    }
-                }
+                // Do NOT use raw elem->m_tick for positioning within a voice.
+                // MuseScore's importer uses cumTick (written duration) exclusively;
+                // MIDI timing from e->tick is only used for chord detection.
+                // Writing <forward> elements based on elem->m_tick introduces MIDI
+                // jitter and, critically, MuseScore does NOT count <forward> toward
+                // the voice's duration — only actual note/rest elements count.
+                (void)elem->m_tick;
 
                 const auto direction = m_nc.direction(curnote);
                 if (direction
@@ -1161,11 +1156,6 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 }
             }
             else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-                const int gap = (int)elem->m_tick - tick;
-                if (gap > CHORD_MIDI_THRESHOLD) {
-                    m_writer.writeBackupForward(gap, v);
-                    tick = (int)elem->m_tick;
-                }
                 chordRootTick2 = (int)elem->m_tick;
                 bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
                 rest(currest, partNr, th, forceCloseTuplet, tick);
@@ -1174,12 +1164,12 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
             tick += duration;
         }
 
-        // Fill any remaining gap to the measure boundary so MuseScore sees a
-        // complete measure.  This handles artefact-filtered notes that leave a
-        // small gap at the end, and non-standard time signatures whose tick
-        // count doesn't divide evenly with divisions=240.
+        // Fill any remaining gap to the measure boundary with a rest so that
+        // MuseScore counts the gap toward the voice duration (<forward> elements
+        // are ignored by MuseScore for this purpose).
         if (tick < measureDur) {
-            m_writer.writeBackupForward(measureDur - tick, v);
+            const int gap = measureDur - tick;
+            m_writer.writeGapRest(gap, v, nstaves(partNr) > 1 ? 1 : 0);
             tick = measureDur;
         }
 

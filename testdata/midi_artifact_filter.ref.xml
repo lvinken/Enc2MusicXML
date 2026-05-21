@@ -35,10 +35,6 @@
         <duration>240</duration>
         <type>quarter</type>
       </note>
-      <forward>
-        <duration>11</duration>
-        <voice>1</voice>
-      </forward>
       <note>
         <pitch>
           <step>E</step>
@@ -47,10 +43,12 @@
         <duration>240</duration>
         <type>quarter</type>
       </note>
-      <forward>
-        <duration>469</duration>
+      <note>
+        <rest/>
+        <duration>480</duration>
+        <type>half</type>
         <voice>1</voice>
-      </forward>
+      </note>
     </measure>
     <measure number="2"/>
     <measure number="3"/>
