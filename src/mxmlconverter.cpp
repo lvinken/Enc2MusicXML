@@ -801,10 +801,12 @@ static int durationRest(const EncMeasureElemRest* const rest)
         // Non-standard value: fall through (dots = 0, plain face value)
     }
 
+    // Apply dots using the correct formula (not iterative *3/2 which gives 9/4 for 2 dots):
+    // 0 dots: base, 1 dot: base*3/2, 2 dots: base*7/4, 3 dots: base*15/8
     int result = base;
-    for (int i = 0; i < dots; ++i) {
-        result = result * 3 / 2;
-    }
+    if      (dots == 1) result = base * 3 / 2;
+    else if (dots == 2) result = base * 7 / 4;
+    else if (dots == 3) result = base * 15 / 8;
     return result;
 }
 
@@ -1142,9 +1144,23 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
             int duration = 0;
             if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
                 // Same chord detection as first pass: compare to chord root, not previous note.
+                const int savedChordRootTick2 = chordRootTick2;
                 const bool isChord = isChordOf(chordRootTick2, curnote);
                 if (!isChord)
                     chordRootTick2 = (int)curnote->m_tick;
+
+                // Second-pass overflow guard: a note that was accepted by the first pass as a
+                // chord extension (isChord=true → no overflow check) may appear as a root here
+                // if chordRootTick2 differs from chordRootTick (they can diverge when elements
+                // filtered in the first pass alter chordRootTick but not chordRootTick2).
+                // Skip root notes whose written duration would push past the measure boundary.
+                if (!isChord) {
+                    const int nd = durationNote(curnote);
+                    if (tick + nd > measureDur) {
+                        chordRootTick2 = savedChordRootTick2;  // undo root update
+                        continue;
+                    }
+                }
 
                 // Do NOT use raw elem->m_tick for positioning within a voice.
                 // MuseScore's importer uses cumTick (written duration) exclusively;
