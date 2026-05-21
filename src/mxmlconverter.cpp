@@ -776,8 +776,16 @@ static int durationNote(const EncMeasureElemNote* const note)
 
 static int durationRest(const EncMeasureElemRest* const rest)
 {
-    return calculateDuration(rest->m_faceValue, rest->m_dotControl,
-                             rest->actualNotes(), rest->normalNotes());
+    // Use the same realDuration-based logic as durationNote():
+    // raw calculateDuration() can produce non-standard values when the m_tuplet
+    // byte contains unusual ratios (e.g. 11:6 from live-recorded MIDI files),
+    // causing <duration> mismatches that crash MuseScore's XML importer.
+    if (rest->m_realDuration > 0 && isStandardDuration(rest->m_realDuration))
+        return rest->m_realDuration;
+    int dummy = 0;
+    if (detectTuplet(rest->m_realDuration, rest->m_faceValue, dummy) > 0)
+        return rest->m_realDuration;
+    return faceValue2duration(rest->m_faceValue & 0x0F);
 }
 
 
@@ -1074,6 +1082,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 else if (const auto* rest = dynamic_cast<const EncMeasureElemRest*>(elem)) {
                     int restDur = durationRest(rest);
                     if (restDur <= 0) continue;  // Skip invalid rests
+                    if (tick + restDur > measureDur) continue;  // Skip rests that overflow
                     chordRootTick = (int)elem->m_tick;
                     voiceElems.push_back(elem);
                     tick += restDur;
