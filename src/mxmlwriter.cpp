@@ -274,20 +274,34 @@ static const char* durationToType(const int d)
     }
 }
 
+// Standard note durations in descending order (no triplets — they need tuplet context)
+static const int kStandardDurations[] = {
+    720, 480, 360, 240, 180, 120, 90, 60, 45, 30, 15, 7, 0
+};
+
 void MxmlWriter::writeGapRest(const int duration, const int voice, const int staff)
 {
     if (duration <= 0) return;
+    const char* type = durationToType(duration);
+    if (!type) {
+        // Non-standard duration: split into the largest fitting standard rest, then recurse.
+        // This avoids MuseScore's TDuration rounding a non-standard value to the wrong type.
+        for (int i = 0; kStandardDurations[i] > 0; ++i) {
+            if (kStandardDurations[i] <= duration) {
+                writeGapRest(kStandardDurations[i], voice, staff);
+                writeGapRest(duration - kStandardDurations[i], voice, staff);
+                return;
+            }
+        }
+        return; // duration < 7 ticks (below 128th note) — too small to represent
+    }
     m_xml.writeStartElement("note");
     m_xml.writeEmptyElement("rest");
     m_xml.writeTextElement("duration", QString::number(duration));
-    const char* type = durationToType(duration);
-    if (type) {
-        m_xml.writeTextElement("type", type);
-        // dots for dotted values
-        if (duration == 720 || duration == 360 || duration == 180
-                || duration == 90 || duration == 45) {
-            m_xml.writeEmptyElement("dot");
-        }
+    m_xml.writeTextElement("type", type);
+    if (duration == 720 || duration == 360 || duration == 180
+            || duration == 90 || duration == 45) {
+        m_xml.writeEmptyElement("dot");
     }
     m_xml.writeTextElement("voice", QString::number(voice + 1));
     if (staff > 0) m_xml.writeTextElement("staff", QString::number(staff));

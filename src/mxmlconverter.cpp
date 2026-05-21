@@ -1115,6 +1115,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
         // Reset for second pass
         tick = 0;
         chordRootTick2 = -999;  // reset for second pass
+        int lastRootDur = 0;    // duration of last root note (for chord note <duration>)
 
         // Second pass: write elements with proper tuplet handling
         for (size_t i = 0; i < voiceElems.size(); ++i) {
@@ -1130,12 +1131,24 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                     if (curAsNote && isChordOf((int)curAsNote->m_tick, nextNote)) {
                         continue;
                     }
-                    nextNonChordIsTuplet = (nextNote->actualNotes() > 0 && nextNote->normalNotes() > 0);
+                    // Use same detection as note(): check stored actualNotes first,
+                    // then detectTuplet (for MIDI-recorded files where actual/normal == 0)
+                    int nextActual = nextNote->actualNotes();
+                    if (nextActual == 0) {
+                        int dummy = 0;
+                        nextActual = detectTuplet(durationNote(nextNote), nextNote->m_faceValue, dummy);
+                    }
+                    nextNonChordIsTuplet = (nextActual > 0);
                     isLastNonChordInMeasure = false;
                     break;
                 }
                 else if (const auto* nextRest = dynamic_cast<const EncMeasureElemRest*>(voiceElems[j])) {
-                    nextNonChordIsTuplet = (nextRest->actualNotes() > 0 && nextRest->normalNotes() > 0);
+                    int nextActual = nextRest->actualNotes();
+                    if (nextActual == 0) {
+                        int dummy = 0;
+                        nextActual = detectTuplet(durationRest(nextRest), nextRest->m_faceValue, dummy);
+                    }
+                    nextNonChordIsTuplet = (nextActual > 0);
                     isLastNonChordInMeasure = false;
                     break;
                 }
@@ -1193,8 +1206,9 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
                 }
 
                 bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
-                note(curnote, partNr, th, isChord, forceCloseTuplet, tick);
+                note(curnote, partNr, th, isChord, forceCloseTuplet, tick, lastRootDur);
                 duration = isChord ? 0 : durationNote(curnote);
+                if (!isChord) lastRootDur = duration;
 
                 if (wedgeStop) {
                     m_writer.writeWedge(WedgeType::STOP);
@@ -1239,12 +1253,16 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 // note - write a note
 //---------------------------------------------------------
 
-void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord, const bool forceCloseTuplet, const int calculatedTick)
+void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord, const bool forceCloseTuplet, const int calculatedTick, const int chordRootDur)
 {
     char step = ' ';
     int alter = 0;
     int octave = 0;
-    const int noteDur = durationNote(note);  // Calculate duration once for consistency
+    // For chord notes, use the chord root's duration so that the MusicXML importer's
+    // measure-duration accumulation (mDura in pass 1) does not double-count chord notes
+    // that have different durations from their root (e.g. triplet 8th extension of a
+    // quarter root in a MIDI-recorded chord cluster).
+    const int noteDur = (chord && chordRootDur > 0) ? chordRootDur : durationNote(note);
 
     // Use current key signature (tracked through key changes) for pitch spelling
     midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), m_currentFifths, step, alter, octave);

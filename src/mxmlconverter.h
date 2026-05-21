@@ -66,7 +66,7 @@ private:
     void key();
     void keyChange(const EncMeasureElemKeyChange* keyCh);
     void measure(const int partNr, const size_t measureNr);
-    void note(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord, const bool forceCloseTuplet, const int calculatedTick);
+    void note(const EncMeasureElemNote* const note, const int partNr, TupletHandler &th, const bool chord, const bool forceCloseTuplet, const int calculatedTick, const int chordRootDur = 0);
     void part(const int encPartNr, const int xmlPartNr);
     void partList();
     void parts();
