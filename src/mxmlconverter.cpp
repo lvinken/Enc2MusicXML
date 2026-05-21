@@ -776,16 +776,36 @@ static int durationNote(const EncMeasureElemNote* const note)
 
 static int durationRest(const EncMeasureElemRest* const rest)
 {
-    // Use the same realDuration-based logic as durationNote():
-    // raw calculateDuration() can produce non-standard values when the m_tuplet
-    // byte contains unusual ratios (e.g. 11:6 from live-recorded MIDI files),
-    // causing <duration> mismatches that crash MuseScore's XML importer.
-    if (rest->m_realDuration > 0 && isStandardDuration(rest->m_realDuration))
-        return rest->m_realDuration;
-    int dummy = 0;
-    if (detectTuplet(rest->m_realDuration, rest->m_faceValue, dummy) > 0)
-        return rest->m_realDuration;
-    return faceValue2duration(rest->m_faceValue & 0x0F);
+    // Compute the rest duration using the same approach as the MuseScore Encore
+    // importer: use face value for the base duration, then detect dots from the
+    // dotControl field (which stores the sounding duration in Encore ticks).
+    //
+    // We intentionally ignore m_tuplet: in MIDI-recorded Encore files the tuplet
+    // byte for rests is often noise (e.g. 11:6), and the old calculateDuration()
+    // path with raw actualNotes/normalNotes produced non-standard values like 49
+    // that crash MuseScore's MusicXML importer.
+    const int fv   = rest->m_faceValue & 0x0F;
+    const int base = faceValue2duration(fv);
+    if (base <= 0) return 0;
+
+    // Detect dot count from dotControl (visual sounding duration).
+    // dotControl == base     → 0 dots (plain)
+    // dotControl == base*3/2 → 1 dot  (dotted)
+    // dotControl == base*7/4 → 2 dots (double-dotted)
+    int dots = 0;
+    if (rest->m_dotControl > 0) {
+        const int dc = static_cast<int>(rest->m_dotControl);
+        if      (dc == base * 3 / 2) dots = 1;
+        else if (dc == base * 7 / 4) dots = 2;
+        else if (dc == base * 15 / 8) dots = 3;
+        // Non-standard value: fall through (dots = 0, plain face value)
+    }
+
+    int result = base;
+    for (int i = 0; i < dots; ++i) {
+        result = result * 3 / 2;
+    }
+    return result;
 }
 
 
