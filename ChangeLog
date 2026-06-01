@@ -1,3 +1,26 @@
+Version 0.6 (2026-05-21)
+
+- Fix tuplet bracket placement for MIDI-recorded files: notes whose tuplet ratio
+  is inferred from duration (actualNotes=0 in the Encore file) are now correctly
+  recognized by the look-ahead logic that decides when to close a tuplet group.
+  Previously the look-ahead checked only the stored actualNotes field, causing
+  premature tuplet-stop markers that left the next note as an orphaned
+  tuplet-start, which MuseScore imported as an incomplete tuplet.
+- Fix gap rest splitting: when the remaining space at the end of a voice is a
+  non-standard duration (not representable as a single note type), write it as
+  multiple standard-duration rests instead of a single typeless rest. A typeless
+  rest caused MuseScore's TDuration to round to the nearest standard value and
+  place the wrong number of ticks, producing "Incomplete measure" corruption.
+- Fix chord note tuplet detection: notes whose actualNotes is 0 in the file now
+  correctly detect their tuplet ratio via the note duration and face value, so
+  the time-modification element is written when the surrounding context has
+  proper tuplet brackets.
+- Improve MIDI-recorded large orchestral file compatibility (tested against
+  atraing.enc, a 31-staff MIDI-recorded score).
+- Add key signature tracking for correct pitch spelling when key changes occur.
+- Support instrument name recovery from formula positions for v0xC4 files.
+- Support staff visibility flag.
+
 Version 0.5 (2018-09-29)
 
 - support words (staff text)

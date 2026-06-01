@@ -252,6 +252,64 @@ void MxmlWriter::writeEnd()
 
 
 //---------------------------------------------------------
+// writeGapRest - write a rest to fill a timing gap in a voice.
+// Used instead of <forward> so that MuseScore counts the duration
+// toward the voice total (MuseScore ignores <forward> for this purpose).
+// For non-standard durations no <type> is written; MuseScore infers
+// the type from the <duration> value.
+//---------------------------------------------------------
+
+static const char* durationToType(const int d)
+{
+    switch (d) {
+    case 960: return "whole";
+    case 720: case 480: return "half";
+    case 360: case 240: return "quarter";
+    case 180: case 120: return "eighth";
+    case  90: case  60: return "16th";
+    case  45: case  30: return "32nd";
+    case  15: return "64th";
+    case   7: return "128th";
+    default:  return nullptr;
+    }
+}
+
+// Standard note durations in descending order (no triplets — they need tuplet context)
+static const int kStandardDurations[] = {
+    720, 480, 360, 240, 180, 120, 90, 60, 45, 30, 15, 7, 0
+};
+
+void MxmlWriter::writeGapRest(const int duration, const int voice, const int staff)
+{
+    if (duration <= 0) return;
+    const char* type = durationToType(duration);
+    if (!type) {
+        // Non-standard duration: split into the largest fitting standard rest, then recurse.
+        // This avoids MuseScore's TDuration rounding a non-standard value to the wrong type.
+        for (int i = 0; kStandardDurations[i] > 0; ++i) {
+            if (kStandardDurations[i] <= duration) {
+                writeGapRest(kStandardDurations[i], voice, staff);
+                writeGapRest(duration - kStandardDurations[i], voice, staff);
+                return;
+            }
+        }
+        return; // duration < 7 ticks (below 128th note) — too small to represent
+    }
+    m_xml.writeStartElement("note");
+    m_xml.writeEmptyElement("rest");
+    m_xml.writeTextElement("duration", QString::number(duration));
+    m_xml.writeTextElement("type", type);
+    if (duration == 720 || duration == 360 || duration == 180
+            || duration == 90 || duration == 45) {
+        m_xml.writeEmptyElement("dot");
+    }
+    m_xml.writeTextElement("voice", QString::number(voice + 1));
+    if (staff > 0) m_xml.writeTextElement("staff", QString::number(staff));
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
 // writeGrace - write fermata
 //---------------------------------------------------------
 
@@ -401,11 +459,22 @@ void MxmlWriter::writeRepeatRight(const QString& words)
 // writeScorePart - write score part ncontaining instrument instr
 //---------------------------------------------------------
 
-void MxmlWriter::writeScorePart(const int n, const QString& instr)
+void MxmlWriter::writeScorePart(const int n, const QString& instr, const int midiProgram)
 {
     m_xml.writeStartElement("score-part");
     m_xml.writeAttribute("id", QString("P%1").arg(n));
     m_xml.writeTextElement("part-name", instr);
+    if (midiProgram > 0) {
+        m_xml.writeStartElement("score-instrument");
+        m_xml.writeAttribute("id", QString("P%1-I1").arg(n));
+        m_xml.writeTextElement("instrument-name", instr);
+        m_xml.writeEndElement();
+        m_xml.writeStartElement("midi-instrument");
+        m_xml.writeAttribute("id", QString("P%1-I1").arg(n));
+        m_xml.writeTextElement("midi-channel", QString::number(n));
+        m_xml.writeTextElement("midi-program", QString::number(midiProgram));
+        m_xml.writeEndElement();
+    }
     m_xml.writeEndElement();
 }
 
@@ -504,12 +573,25 @@ void MxmlWriter::writeTime(const unsigned int beats, const unsigned int beattype
 
 
 //---------------------------------------------------------
+// writeTimeChange - write time signature change (inside attributes)
+//---------------------------------------------------------
+
+void MxmlWriter::writeTimeChange(const unsigned int beats, const unsigned int beattype)
+{
+    m_xml.writeStartElement("attributes");
+    writeTime(beats, beattype);
+    m_xml.writeEndElement();
+}
+
+
+//---------------------------------------------------------
 // writeTimeModification - write time modification
 //---------------------------------------------------------
 
 void MxmlWriter::writeTimeModification(const int actual, const int normal)
 {
-    if (actual > 0 && normal > 0) {
+    // Only write if it's a real tuplet (actual != normal, e.g., 3:2 triplet)
+    if (actual > 1 && normal > 0 && actual != normal) {
         m_xml.writeStartElement("time-modification");
         m_xml.writeTextElement("actual-notes", QString::number(actual));
         m_xml.writeTextElement("normal-notes", QString::number(normal));
@@ -524,16 +606,26 @@ void MxmlWriter::writeTimeModification(const int actual, const int normal)
 
 void MxmlWriter::writeTuplet(TupletState state)
 {
-    if (state == TupletState::START || state == TupletState::STOP) {
+    if (state == TupletState::START || state == TupletState::STOP || state == TupletState::STOPSTART) {
         m_xml.writeStartElement("notations");
-        if (state == TupletState::START) {
+        if (state == TupletState::STOP) {
+            m_xml.writeStartElement("tuplet");
+            m_xml.writeAttribute("type", "stop");
+            m_xml.writeEndElement();
+        }
+        else if (state == TupletState::START) {
             m_xml.writeStartElement("tuplet");
             m_xml.writeAttribute("type", "start");
             m_xml.writeEndElement();
         }
-        if (state == TupletState::STOP) {
+        else if (state == TupletState::STOPSTART) {
+            // Stop previous group
             m_xml.writeStartElement("tuplet");
             m_xml.writeAttribute("type", "stop");
+            m_xml.writeEndElement();
+            // Start new group
+            m_xml.writeStartElement("tuplet");
+            m_xml.writeAttribute("type", "start");
             m_xml.writeEndElement();
         }
         m_xml.writeEndElement();

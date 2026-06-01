@@ -23,6 +23,10 @@
 //---------------------------------------------------------
 
 #include <QtDebug>
+#include <QIODevice>
+
+#include <map>
+#include <algorithm>
 
 #include "encfile.h"
 
@@ -46,7 +50,7 @@ static bool readMagic(QDataStream& data, QString& magic)
     for (int i = 0; i < 4 && !data.atEnd(); ++i) {
         quint8 ch;
         data >> ch;
-        magic.append(ch);
+        magic.append(QChar(ch));
     }
     qDebug()
             << "filepos" << hexString(data.device()->pos() - 4)
@@ -99,14 +103,14 @@ static QString findNextKnownMagic(QDataStream& data)
     for (int i = 0; i < 4 && !data.atEnd(); ++i) {
         quint8 ch;
         data >> ch;
-        magic.append(ch);
+        magic.append(QChar(ch));
     }
 
     while (!isKnownMagic(magic) && !data.atEnd()) {
         magic.remove(0, 1);
         quint8 ch;
         data >> ch;
-        magic.append(ch);
+        magic.append(QChar(ch));
     }
 
     if (!isKnownMagic(magic))
@@ -186,28 +190,42 @@ EncInstrument::EncInstrument()
 }
 
 
-bool EncInstrument::read(QDataStream& data, const quint32 var_size)
+bool EncInstrument::read(QDataStream& data, const quint32 var_size, bool probeEncoding)
 {
     qDebug() << "EncInstrument::read()";
     m_offset = var_size;
     m_offset &= 0xFFFF; // TODO: ritmo.enc fails when m_offset is assumed to be 32 bit
+
+    // Encore 5.0.2 v0xC4 files write instrument names as UTF-16 LE even when
+    // the offset field is <= 250 (which charSize() would classify as ONE_BYTE).
+    // Probe the first two bytes: if b0 is printable ASCII and b1 is 0x00,
+    // the name is UTF-16 LE.
+    CharSize cs = charSize();
+    if (probeEncoding && cs == CharSize::ONE_BYTE) {
+        const qint64 savedPos = data.device()->pos();
+        quint8 b0 = 0, b1 = 0;
+        data >> b0 >> b1;
+        data.device()->seek(savedPos);
+        if (b0 >= 0x20 && b0 < 0x7F && b1 == 0x00)
+            cs = CharSize::TWO_BYTES;
+    }
+
     qDebug()
             << "m_offset" << m_offset
-            << "charSize" << static_cast<int>(charSize())
+            << "charSize" << static_cast<int>(cs)
                ;
 
-    int nread = 8; // # bytes read sofar
-    // read the name as null-terminated 8 or 16-bit chars
+    int nread = 8; // # bytes read so far
     QChar ch;
     bool ready = false;
     while (!ready) {
-        if (charSize() == CharSize::ONE_BYTE) {
+        if (cs == CharSize::ONE_BYTE) {
             quint8 b;
             data >> b;
-            ch = b;
+            ch = QChar(char16_t(b));
             nread += 1;
         }
-        else if (charSize() == CharSize::TWO_BYTES) {
+        else if (cs == CharSize::TWO_BYTES) {
             data >> ch;
             nread += 2;
         }
@@ -283,7 +301,14 @@ bool EncLineStaffData::read(QDataStream& data)
     m_clef = static_cast<clefType>(ct);
     data >> m_key;
     data >> m_pageIdx;
-    data.skipRawData(3);
+    // Bytes +17, +18, +19: the third byte encodes staff visibility.
+    // 0x00 = hidden from score; any non-zero value = visible.
+    // Verified by binary diff of files saved with/without a hidden staff.
+    quint8 skip0, skip1, showByte;
+    data >> skip0 >> skip1 >> showByte;
+    m_showStaff = (showByte != 0);
+    (void)skip0;
+    (void)skip1;
     quint8 st;
     data >> st;
     m_staffType = static_cast<staffType>(st);
@@ -341,23 +366,41 @@ bool EncLine::read(QDataStream& data, const quint32 var_size, const int staffPer
 // EncMeasure
 //---------------------------------------------------------
 
-bool EncMeasure::read(QDataStream& data, const quint32 var_size)
+bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat, bool veryOldFormat)
 {
     m_varsize = var_size;
+
+    // Save start position for absolute positioning (like enc2ly does)
+    // Note: enc2ly's offsets include the 4-byte size field we already read
+    // So we subtract 4 from enc2ly offsets, or equivalently use (measStart - 4 + enc2ly_offset)
+    qint64 measStart = data.device()->pos();
+
+    // Read header using absolute offsets (based on enc2ly, adjusted by -4)
     data >> m_bpm;
     data >> m_timeSigGlyph;
     data.skipRawData(1);
     data >> m_beatTicks;
     data >> m_durTicks;
+
+    // enc2ly offset 0x0C -> measStart + 0x0C - 4 = measStart + 0x08
+    data.device()->seek(measStart + 0x08);
     data >> m_timeSigNum;
     data >> m_timeSigDen;
-    data.skipRawData(2);
+
+    // enc2ly offset 0x10 -> measStart + 0x0C
+    data.device()->seek(measStart + 0x0C);
     data >> m_barTypeStart;
     data >> m_barTypeEnd;
-    data >> m_repeatMarker;
+    data.skipRawData(1);
     data >> m_repeatAlternative;
-    data.skipRawData(9);
+
+    // m_coda (jump sign) is a quint32 whose byte 1 holds the sign value.
+    // enc2ly addresses the sign byte at offset 0x1E (= measStart+0x1A), but
+    // we read the full quint32 starting one byte earlier so that
+    // repeat() = (m_coda >> 8) & 0xFF extracts it correctly.
+    data.device()->seek(measStart + 0x19);
     data >> m_coda;
+
     qDebug()
             << "m_id" << m_id
             << "m_varsize" << m_varsize
@@ -373,12 +416,46 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
             << "m_repeatAlternative" << m_repeatAlternative
             << "m_coda" << m_coda
                ;
-    data.skipRawData(59 - 34);    // skip to end
+
+    // Elements start at different offsets depending on format version:
+    // - v0xA6 (very old): offset 0x3E, element spacing = size * 2
+    // - v0xC2/v0xC4: offset 0x36, element spacing = size
+    qint64 elemOffset = veryOldFormat ? 0x3E : 0x36;
+    data.device()->seek(measStart + elemOffset);
+
+    // Calculate end of measure block for bounds checking
+    qint64 measEnd = measStart + m_varsize + elemOffset;
+
     quint16 tick;
     data >> tick;
-    int elemSize = 0;
     qDebug() << "tick" << tick;
+
+    if (tick == 0xFFFF) {
+        // Measure has no elements, skip to end
+        data.device()->seek(measEnd);
+        return true;
+    }
+
+    // Safety: maximum number of elements to prevent infinite loops
+    const int MAX_ELEMENTS = 10000;
+    int elemCount = 0;
+
     while (tick != 0xFFFF) {
+        // Safety check: prevent infinite loops
+        if (++elemCount > MAX_ELEMENTS) {
+            qDebug() << "Too many elements, stopping to prevent infinite loop";
+            break;
+        }
+
+        // Safety check: don't read past measure bounds
+        if (data.device()->pos() >= measEnd - 2) {
+            qDebug() << "Reached end of measure block at pos" << data.device()->pos();
+            break;
+        }
+
+        // Save position where element starts (right before tick)
+        qint64 elemStart = data.device()->pos() - 2;  // -2 because we already read tick
+
         quint8 typeVoice;
         data >> typeVoice;
         qDebug() << "typeVoice" << typeVoice;
@@ -419,27 +496,122 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size)
         } else if (elemType(type) == elemType::UNKNOWN2) {
             elem = new EncMeasureElemUnknown(tick, type, voice);
         } else {
+            // Unknown element type - skip it using size field
+            quint8 elemSize;
+            data >> elemSize;
             qDebug()
                     << "filepos" << hexString(data.device()->pos() - 1)
-                    << "unsupported elemType" << type;
-            exit(1);
+                    << "skipping unsupported elemType" << type
+                    << "size" << elemSize;
+            if (elemSize > 3) {
+                data.device()->seek(elemStart + elemSize);
+            } else {
+                qDebug() << "Invalid element size, skipping to end of measure";
+                break;
+            }
+            data >> tick;
+            qDebug() << "tick" << tick;
+            continue;
         }
         //qDebug() << "elem:" << elem;
         elem->read(data);
         if (elemType(type) != elemType::NONE)
             m_measureElems.push_back(elem);
-        elemSize += elem->m_size;
+
+        // Seek to end of element using absolute positioning (like enc2ly)
+        // Element total size is m_size bytes starting from tick
+        // For very old format (v0xA6), element spacing is size * 2
+        if (elem->m_size > 0) {
+            qint64 elemSpacing = veryOldFormat ? elem->m_size * 2 : elem->m_size;
+            data.device()->seek(elemStart + elemSpacing);
+        } else {
+            // If size is 0, something is wrong - skip a few bytes to avoid infinite loop
+            qDebug() << "Element size is 0, advancing by minimum amount";
+            data.device()->seek(data.device()->pos() + 1);
+        }
+
         data >> tick;
         qDebug() << "tick" << tick;
+
+        // Very old format (v0xA6) doesn't use 0xFFFF end marker
+        // Check for end of block instead
+        if (veryOldFormat && data.device()->pos() >= measEnd - 4) {
+            break;
+        }
     }
-    const int remaining = m_varsize - elemSize - 4;
-    qDebug()
-            << "elemSize" << elemSize
-            << "remaining" << remaining;
-    if (remaining > 0)
-        data.skipRawData(remaining);
+
+    // Seek to end of measure block to maintain block alignment
+    data.device()->seek(measEnd);
     return true;
 }
+
+
+//---------------------------------------------------------
+// Calculate real durations from ticks
+// For each voice/staff combination, calculates the actual duration
+// of each element based on the tick of the next element.
+//---------------------------------------------------------
+
+void EncMeasure::calculateRealDurations()
+{
+    // Encore files use the same tick scale as MusicXML with divisions=240:
+    // quarter = 240 ticks, half = 480 ticks, 3/4 measure = 720 ticks
+    // So we just need to calculate duration from tick differences, no scaling needed.
+
+    // Group notes and rests by staff and voice (only elements with duration)
+    std::map<std::pair<int, int>, std::vector<EncMeasureElem*>> groups;
+
+    for (auto* elem : m_measureElems) {
+        // Only process notes and rests
+        // Skip elements with tick position beyond measure duration (garbage data)
+        if (elem->m_tick > m_durTicks) {
+            continue;
+        }
+        if (dynamic_cast<EncMeasureElemNote*>(elem) || dynamic_cast<EncMeasureElemRest*>(elem)) {
+            auto key = std::make_pair(static_cast<int>(elem->m_staffIdx), static_cast<int>(elem->m_voice));
+            groups[key].push_back(elem);
+        }
+    }
+
+    // For each group, sort by tick and calculate real durations
+    for (auto& [key, elems] : groups) {
+        // Sort by tick
+        std::sort(elems.begin(), elems.end(), [](const EncMeasureElem* a, const EncMeasureElem* b) {
+            return a->m_tick < b->m_tick;
+        });
+
+        // Calculate durations from tick differences
+        for (size_t i = 0; i < elems.size(); ++i) {
+            qint16 nextTick;
+            if (i + 1 < elems.size()) {
+                // Skip exact chord notes (same tick), then also skip notes within
+                // CHORD_CLUSTER_THRESHOLD ticks: live-recorded chords have individual
+                // notes offset by 1-3 ticks, which would otherwise produce tiny rdur.
+                size_t j = i + 1;
+                while (j < elems.size() && elems[j]->m_tick == elems[i]->m_tick) {
+                    ++j;
+                }
+                while (j < elems.size()
+                       && elems[j]->m_tick - elems[i]->m_tick < CHORD_CLUSTER_THRESHOLD) {
+                    ++j;
+                }
+                if (j < elems.size()) {
+                    nextTick = elems[j]->m_tick;
+                } else {
+                    nextTick = m_durTicks;
+                }
+            } else {
+                nextTick = m_durTicks;
+            }
+
+            qint16 duration = nextTick - elems[i]->m_tick;
+            if (duration > 0) {
+                elems[i]->m_realDuration = duration;
+            }
+        }
+    }
+}
+
 
 //---------------------------------------------------------
 // EncMeasureElem
@@ -485,7 +657,8 @@ bool EncMeasureElemNone::read(QDataStream& data)
     qDebug() << "EncMeasureElemNone::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);
 
     return true;
 }
@@ -506,7 +679,8 @@ bool EncMeasureElemClef::read(QDataStream& data)
     qDebug() << "EncMeasureElemClef::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);
 
     return true;
 }
@@ -528,7 +702,8 @@ bool EncMeasureElemKeyChange::read(QDataStream& data)
 
     EncMeasureElem::read(data);
     data >> m_tipo;
-    data.skipRawData(m_size - 5 - 1); // skip to end
+    int toSkip = m_size - 5 - 1;
+    if (toSkip > 0) data.skipRawData(toSkip); // skip to end
     m_xoffset = 0;                    // like in enc2ly
 
     qDebug()
@@ -554,10 +729,23 @@ bool EncMeasureElemTie::read(QDataStream& data)
 {
     qDebug() << "EncMeasureElemTie::read()";
 
-    EncMeasureElem::read(data);
-    data.skipRawData(5);
-    data >> m_xoffset;
-    data.skipRawData(m_size - 5 - 6);   // skip to end
+    EncMeasureElem::read(data);  // reads size(+3) and staffIdx(+4); stream now at +5
+
+    // Byte at +5 from elemStart encodes tie direction:
+    //   0xfe = outgoing tie (TIE-START): note at this tick sends a tie forward.
+    //   other = arc-only marker: visual endpoint of an incoming tie arc.
+    quint8 dirByte = 0;
+    if (m_size > 5)
+        data >> dirByte;
+    m_isTieStart = (dirByte == 0xfe);
+
+    // Skip to xoffset (at +10 from elemStart = +5 bytes from current position
+    // if dirByte was read, or +5 if not).
+    const int read5 = (m_size > 5) ? 1 : 0;
+    data.skipRawData(4);    // skip bytes +6..+9
+    data >> m_xoffset;      // read xoffset at +10
+    const int toSkip = m_size - 5 - read5 - 5 - 1;
+    if (toSkip > 0) data.skipRawData(toSkip);   // skip to end
 
     qDebug()
             << "m_tick" << m_tick
@@ -586,7 +774,8 @@ bool EncMeasureElemBeam::read(QDataStream& data)
     qDebug() << "EncMeasureElemBeam::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
     m_xoffset = 255;                  // faked like in enc2ly
 
     qDebug()
@@ -612,23 +801,29 @@ bool EncMeasureElemOrnament::read(QDataStream& data)
     qDebug() << "EncMeasureElemOrnament::read()";
 
     EncMeasureElem::read(data);
-    data >> m_tipo;
-    data.skipRawData(4);
-    data >> m_xoffset;
-    data.skipRawData(7);
-    data >> m_al_mezuro;
-    data.skipRawData(1);
-    data >> m_xoffset2;
-    data.skipRawData(5);
-    data >> m_speguleco;
+
+    // rem tracks bytes remaining in ornament-specific area (m_size minus 5-byte element header)
+    int rem = qMax(0, m_size - 5);
+    auto rd8 = [&](quint8& f) { if (rem > 0) { data >> f; --rem; } };
+    auto sk  = [&](int n)     { int t = qMin(n, rem); if (t > 0) { data.skipRawData(t); rem -= t; } };
+
+    rd8(m_tipo);
+    sk(4);
+    rd8(m_xoffset);
+    sk(7);
+    rd8(m_al_mezuro);
+    sk(1);
+    rd8(m_xoffset2);
+    sk(5);
+    rd8(m_speguleco);
     m_speguleco &= 3;
-    data.skipRawData(1);
-    data >> m_noto;
-    data.skipRawData(1);
-    data >> m_tempo;
-    data.skipRawData(1);
-    data >> m_tind;
-    data.skipRawData(m_size - 5 - 28);     // skip to end
+    sk(1);
+    rd8(m_noto);
+    sk(1);
+    rd8(m_tempo);
+    sk(1);
+    rd8(m_tind);
+    if (rem > 0) data.skipRawData(rem);
 
     qDebug()
             << "m_tipo" << m_tipo
@@ -661,7 +856,8 @@ bool EncMeasureElemLyric::read(QDataStream& data)
     qDebug() << "EncMeasureElemLyric::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     return true;
 }
@@ -701,16 +897,19 @@ bool EncMeasureElemChord::read(QDataStream& data)
             quint8 upper;
             data >> upper;
             ++j;
-            QChar ch = (upper << 8) + lower;
+            QChar ch = QChar(char16_t((upper << 8) + lower));
             if (ch == '\0')
                 done = true;
             if (!done)
                 m_teksto.append(ch);
         }
-        data.skipRawData(m_size - 5 - 9 - 2 * 18); // skip to end
+        int toSkip = m_size - 5 - 9 - 2 * 18;
+        if (toSkip > 0) data.skipRawData(toSkip); // skip to end
     }
-    else
-        data.skipRawData(m_size - 5 - 9); // skip to end
+    else {
+        int toSkip = m_size - 5 - 9;
+        if (toSkip > 0) data.skipRawData(toSkip); // skip to end
+    }
 
     qDebug()
             << "m_toniko" << m_toniko
@@ -740,6 +939,13 @@ bool EncMeasureElemNote::read(QDataStream& data)
     qDebug() << "EncMeasureElemNote::read()";
 
     EncMeasureElem::read(data);
+
+    // Format differences:
+    // - v0xC4 (size=28): new format, pitch at correct position
+    // - v0xC2 (size=22): old format, pitch stored where tuplet is read
+    // - v0xA6 (size=10): very old format, but pitch at correct position (uses size*2 spacing)
+    bool needsPitchFix = (m_size == 22);  // Only v0xC2 needs pitch fix
+
     data >> m_faceValue;
     data >> m_grace1;
     data >> m_grace2;
@@ -759,7 +965,14 @@ bool EncMeasureElemNote::read(QDataStream& data)
     data >> m_articulationUp;
     data.skipRawData(1);
     data >> m_articulationDown;
-    data.skipRawData(m_size - 27);     // skip to end
+    int toSkip = m_size - 27;
+    if (toSkip > 0) data.skipRawData(toSkip);
+
+    // In v0xC2 format, pitch is stored where tuplet field is read
+    if (needsPitchFix) {
+        m_semiTonePitch = m_tuplet;
+        m_tuplet = 0;
+    }
 
     qDebug()
             << "m_faceValue" << m_faceValue
@@ -821,7 +1034,8 @@ bool EncMeasureElemRest::read(QDataStream& data)
     data.skipRawData(2);
     data >> m_tuplet;
     data >> m_dotControl;
-    data.skipRawData(m_size - 10 - 5);     // skip to end
+    int toSkip = m_size - 10 - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     qDebug()
             << "m_faceValue" << m_faceValue
@@ -850,7 +1064,8 @@ bool EncMeasureElemUnknown::read(QDataStream& data)
     qDebug() << "EncMeasureElemUnknown::read()";
 
     EncMeasureElem::read(data);
-    data.skipRawData(m_size - 5);     // skip to end
+    int toSkip = m_size - 5;
+    if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     return true;
 }
@@ -946,7 +1161,7 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
             quint8 lower;
             data >> lower;
             ++j;
-            QChar ch = lower;
+            QChar ch = QChar(char16_t(lower));
             if (ch == '\0')
                 done = true;
             if (!done)
@@ -961,7 +1176,7 @@ static QString readTextItem(QDataStream& data, const CharSize charsize)
             quint8 upper;
             data >> upper;
             ++j;
-            QChar ch = (upper << 8) + lower;
+            QChar ch = QChar(char16_t((upper << 8) + lower));
             if (ch == '\0')
                 done = true;
             if (!done)
@@ -980,21 +1195,28 @@ bool EncTitle::read(QDataStream& data, const quint32 var_size, const CharSize ch
 {
     m_varsize = var_size;
 
+    // Determine encoding from the block's own size rather than from the TK00
+    // instrument block (which Encore 5.0.2 can write with offset <= 250 even
+    // though the TITL content is always UTF-16).
+    // ONE_BYTE total: 2 + 20*96  + 504 = 2 426
+    // TWO_BYTE total: 2 + 20*1056 + 120 = 21 242
+    const CharSize cs = (var_size >= 10000) ? CharSize::TWO_BYTES : charsize;
+
     data.skipRawData(2);
 
-    m_title = readTextItem(data, charsize);
-    for (int i = 0; i < 2; ++i) m_subtitle.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 3; ++i) m_instruction.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 4; ++i) m_author.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 2; ++i) m_header.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 2; ++i) m_footer.push_back(readTextItem(data, charsize));
-    for (int i = 0; i < 6; ++i) m_copyright.push_back(readTextItem(data, charsize));
+    m_title = readTextItem(data, cs);
+    for (int i = 0; i < 2; ++i) m_subtitle.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 3; ++i) m_instruction.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 4; ++i) m_author.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 2; ++i) m_header.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 2; ++i) m_footer.push_back(readTextItem(data, cs));
+    for (int i = 0; i < 6; ++i) m_copyright.push_back(readTextItem(data, cs));
 
     // skip to end of TITL
-    if (charsize == CharSize::ONE_BYTE) {
+    if (cs == CharSize::ONE_BYTE) {
         data.skipRawData(504);
     }
-    else if (charsize == CharSize::TWO_BYTES) {
+    else if (cs == CharSize::TWO_BYTES) {
         data.skipRawData(120);
     }
     else {
@@ -1053,7 +1275,11 @@ static void addSpannerEnds(MeasureVec& mv)
                     //print_orna(end_orna);
                     const int endMeas = i + orna->m_al_mezuro;
                     //qDebug() << "endMeas" << endMeas;
-                    mevv.at(endMeas).push_back(end_orna);
+                    if (endMeas >= 0 && static_cast<size_t>(endMeas) < mevv.size()) {
+                        mevv.at(endMeas).push_back(end_orna);
+                    } else {
+                        delete end_orna;
+                    }
                 }
                 else if (orna->type() == ornamentType::WEDGESTART) { // ST_DINAMIKO
                     EncMeasureElemOrnament* end_orna = new EncMeasureElemOrnament(0, 0, 0);
@@ -1064,7 +1290,11 @@ static void addSpannerEnds(MeasureVec& mv)
                     //print_orna(end_orna);
                     const int endMeas = i + orna->m_al_mezuro;
                     //qDebug() << "endMeas" << endMeas;
-                    mevv.at(endMeas).push_back(end_orna);
+                    if (endMeas >= 0 && static_cast<size_t>(endMeas) < mevv.size()) {
+                        mevv.at(endMeas).push_back(end_orna);
+                    } else {
+                        delete end_orna;
+                    }
                 }
             }
         }
@@ -1120,6 +1350,25 @@ static void countStaves(std::vector<EncInstrument>& instruments, const std::vect
 
 
 //---------------------------------------------------------
+// propagateStaffVisibility - copy showStaff from the first matching
+// EncLineStaffData entry into each EncInstrument.
+//---------------------------------------------------------
+
+static void propagateStaffVisibility(std::vector<EncInstrument>& instruments,
+                                     const std::vector<EncLineStaffData>& lineStaffData)
+{
+    for (unsigned int i = 0; i < instruments.size(); ++i) {
+        for (const auto& staff : lineStaffData) {
+            if (staff.instrumentIndex() == i) {
+                instruments[i].m_showStaff = staff.m_showStaff;
+                break;
+            }
+        }
+    }
+}
+
+
+//---------------------------------------------------------
 // EncFile
 //---------------------------------------------------------
 
@@ -1147,7 +1396,8 @@ bool EncFile::read(QDataStream& data)
         }
         else if (next_id == "MEAS") {
             EncMeasure measure;
-            measure.read(data, var_size);
+            measure.read(data, var_size, m_header.isOldFormat(), m_header.isVeryOldFormat());
+            measure.calculateRealDurations();
             m_measures.push_back(measure);
         }
         else if (next_id == "TEXT") {
@@ -1158,7 +1408,10 @@ bool EncFile::read(QDataStream& data)
         }
         else if (isEncInstrumentMagic(next_id)) {
             EncInstrument instrument;
-            instrument.read(data, var_size);
+            // Probe encoding for v0xC4: Encore 5.0.2 writes names as UTF-16 LE
+            // even when the offset field is <= 250 (ONE_BYTE by charSize()).
+            const bool probe = !m_header.isOldFormat() && !m_header.isVeryOldFormat();
+            instrument.read(data, var_size, probe);
             m_instruments.push_back(instrument);
             charsize = instrument.charSize();
         }
@@ -1167,7 +1420,66 @@ bool EncFile::read(QDataStream& data)
     }
 
     fixupInstruments(m_instruments, m_header.m_instrumentCount);
-    countStaves(m_instruments, m_lines.at(0).lineStaffData());
+
+    // Encore 5.0.2 can omit TK block headers for some instruments while still
+    // writing name content at the formula position NAME_BASE + n * NAME_STEP.
+    // Pad the vector to instrumentCount and recover missing names.
+    while (static_cast<int>(m_instruments.size()) < m_header.m_instrumentCount)
+        m_instruments.emplace_back();
+
+    if (!m_header.isOldFormat() && !m_header.isVeryOldFormat()) {
+        static constexpr qint64 NAME_BASE = 202;   // header(194) + TK header(8)
+        static constexpr qint64 NAME_STEP = 2158;
+        for (int n = 0; n < static_cast<int>(m_instruments.size()); ++n) {
+            if (!m_instruments.at(n).m_name.isEmpty())
+                continue;
+            const qint64 off = NAME_BASE + static_cast<qint64>(n) * NAME_STEP;
+            if (off + 2 >= data.device()->size())
+                break;
+            if (!data.device()->seek(off))
+                break;
+            quint8 b0 = 0, b1 = 0;
+            data >> b0 >> b1;
+            if (b0 < 0x20 || b0 >= 0x7F || b1 != 0x00)
+                continue;  // not UTF-16 LE
+            data.device()->seek(off);
+            QString recovered;
+            while (!data.atEnd()) {
+                quint8 lo = 0, hi = 0;
+                data >> lo >> hi;
+                const QChar ch = QChar(char16_t((static_cast<quint16>(hi) << 8) | lo));
+                if (ch == u'\0')
+                    break;
+                recovered.append(ch);
+            }
+            m_instruments[n].m_name = recovered;
+        }
+    }
+
+    // Read per-instrument MIDI program from the fixed-offset table (v0xC4 only).
+    // PRG_BASE + n * PRG_STEP gives the file position of the 8-byte MIDI program
+    // entry for instrument n; all 8 bytes are identical and hold the 1-indexed
+    // GM program number (0 = not configured).
+    if (!m_header.isOldFormat() && !m_header.isVeryOldFormat()) {
+        static constexpr qint64 PRG_BASE = 2278;
+        static constexpr qint64 PRG_STEP = 2158;
+        for (int n = 0; n < static_cast<int>(m_instruments.size()); ++n) {
+            const qint64 off = PRG_BASE + static_cast<qint64>(n) * PRG_STEP;
+            if (off >= data.device()->size())
+                break;
+            if (!data.device()->seek(off))
+                break;
+            quint8 prg = 0;
+            data >> prg;
+            if (prg >= 1 && prg <= 128)
+                m_instruments[n].m_midiProgram = static_cast<int>(prg);
+        }
+    }
+
+    if (!m_lines.empty()) {
+        countStaves(m_instruments, m_lines.at(0).lineStaffData());
+        propagateStaffVisibility(m_instruments, m_lines.at(0).lineStaffData());
+    }
     addSpannerEnds(m_measures);
 
     return true;

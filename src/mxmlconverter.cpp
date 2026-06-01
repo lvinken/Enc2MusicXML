@@ -18,6 +18,7 @@
 /*****************************************************************************/
 
 #include <set>
+#include <tuple>
 
 #include <QFile>
 #include <QtDebug>
@@ -54,6 +55,72 @@ static int faceValue2duration(const quint8 faceValue)
 
 
 //---------------------------------------------------------
+// calculateDots - calculate number of dots from duration and faceValue
+// A dotted note has duration = base * 1.5, double dotted = base * 1.75, etc.
+//---------------------------------------------------------
+
+static int calculateDots(const int realDuration, const quint8 faceValue)
+{
+    int baseDuration = faceValue2duration(faceValue & 0x0F);
+    if (baseDuration <= 0 || realDuration <= 0) {
+        return 0;
+    }
+
+    // Check for dotted durations
+    // 1 dot: base * 3/2 = base * 1.5
+    // 2 dots: base * 7/4 = base * 1.75
+    // 3 dots: base * 15/8 = base * 1.875
+
+    if (realDuration == baseDuration) {
+        return 0;
+    } else if (realDuration == (baseDuration * 3) / 2) {
+        return 1;
+    } else if (realDuration == (baseDuration * 7) / 4) {
+        return 2;
+    } else if (realDuration == (baseDuration * 15) / 8) {
+        return 3;
+    }
+
+    return 0;
+}
+
+
+//---------------------------------------------------------
+// detectTuplet - detect tuplet from duration and faceValue
+// Returns actual notes (3 for triplet), 0 if not a tuplet
+// Sets normalNotes through output parameter
+//---------------------------------------------------------
+
+static int detectTuplet(const int realDuration, const quint8 faceValue, int& normalNotes)
+{
+    int baseDuration = faceValue2duration(faceValue & 0x0F);
+    if (baseDuration <= 0 || realDuration <= 0) {
+        normalNotes = 0;
+        return 0;
+    }
+
+    // Triplet (3:2): duration = base * 2/3
+    // e.g., eighth note base=120, triplet eighth=80
+    if (realDuration == (baseDuration * 2) / 3) {
+        normalNotes = 2;
+        return 3;
+    }
+
+    // Quintuplet (5:4): duration = base * 4/5
+    if (realDuration == (baseDuration * 4) / 5) {
+        normalNotes = 4;
+        return 5;
+    }
+
+    // Sextuplet (6:4): duration = base * 4/6 = base * 2/3 (same as triplet)
+    // Already covered by triplet case
+
+    normalNotes = 0;
+    return 0;
+}
+
+
+//---------------------------------------------------------
 // faceValue2xml - convert Encore to MusicXML note type
 //---------------------------------------------------------
 
@@ -71,6 +138,57 @@ static QString faceValue2xml(const quint8 faceValue)
     case 8: return "128th";
     }
     return "???";
+}
+
+
+//---------------------------------------------------------
+// correctNoteType - correct note type to match actual duration
+// Common Encore bug: last note in measure has wrong duration
+// because m_durTicks is incorrect. Instead of changing duration
+// (which would overflow the measure), change the note type to match.
+//---------------------------------------------------------
+
+static QString correctNoteType(const int realDuration, const quint8 faceValue)
+{
+    // Get the type that faceValue would give
+    QString originalType = faceValue2xml(faceValue & 0x0F);
+
+    if (realDuration <= 0) {
+        return originalType;
+    }
+
+    // Find what note type matches the actual duration
+    // Check common durations: whole=960, half=480, quarter=240, eighth=120, 16th=60, 32nd=30
+    QString correctType = originalType;
+
+    if (realDuration == 960) correctType = "whole";
+    else if (realDuration == 480) correctType = "half";
+    else if (realDuration == 240) correctType = "quarter";
+    else if (realDuration == 120) correctType = "eighth";
+    else if (realDuration == 60) correctType = "16th";
+    else if (realDuration == 30) correctType = "32nd";
+    else if (realDuration == 15) correctType = "64th";
+    // Also check dotted values
+    else if (realDuration == 720) correctType = "half";      // dotted half
+    else if (realDuration == 360) correctType = "quarter";   // dotted quarter
+    else if (realDuration == 180) correctType = "eighth";    // dotted eighth
+    else if (realDuration == 90) correctType = "16th";       // dotted 16th
+    else if (realDuration == 45) correctType = "32nd";       // dotted 32nd
+    // Triplet durations (3:2 ratio, so 2/3 of normal duration)
+    else if (realDuration == 640) correctType = "whole";     // whole triplet
+    else if (realDuration == 320) correctType = "half";      // half triplet
+    else if (realDuration == 160) correctType = "quarter";   // quarter triplet
+    else if (realDuration == 80) correctType = "eighth";     // eighth triplet
+    else if (realDuration == 40) correctType = "16th";       // 16th triplet
+    else if (realDuration == 20) correctType = "32nd";       // 32nd triplet (fusa)
+    else if (realDuration == 10) correctType = "64th";       // 64th triplet
+
+    if (correctType != originalType) {
+        qDebug() << "xxx_type_fix: correcting type from" << originalType
+                 << "to" << correctType << "for duration" << realDuration;
+    }
+
+    return correctType;
 }
 
 
@@ -159,54 +277,53 @@ static void midipitch2xml(const quint8 pitch, const accidentalType accid, const 
 
 //---------------------------------------------------------
 // TupletHandler - handle tuplet state
+// Groups tuplets by their natural duration - all tuplet notes within the same
+// tuplet group belong together. The group duration depends on note value:
+// - Eighth triplet (80 ticks each): group = 240 ticks (one quarter beat)
+// - Quarter triplet (160 ticks each): group = 480 ticks (one half beat)
+// - Sixteenth triplet (40 ticks each): group = 120 ticks (one eighth beat)
 //---------------------------------------------------------
 
-TupletState TupletHandler::newNote(const quint8 actualNotes, const quint8 normalNotes, const quint8 faceValue)
+TupletState TupletHandler::newNote(const quint8 actualNotes, const quint8 normalNotes, const int tick, const int duration)
 {
     TupletState res { TupletState::NONE };
-    char const * printableRes { nullptr };
+
     if (actualNotes <= 0 || normalNotes <= 0) {
-        printableRes = "none";
-        m_count = 0;
+        // Not a tuplet note
+        if (m_inTuplet) {
+            // End previous tuplet group
+            res = TupletState::STOP;
+            m_inTuplet = false;
+            m_groupStartTick = -1;
+            m_groupDuration = 0;
+        }
+        return res;
+    }
+
+    // Calculate the total duration of this tuplet group
+    // For 3:2, three notes replace two normal notes, so group = duration * actualNotes
+    int groupDuration = duration * actualNotes;
+
+    if (!m_inTuplet) {
+        // Start a new tuplet group
+        res = TupletState::START;
+        m_inTuplet = true;
+        m_groupStartTick = tick;
+        m_groupDuration = groupDuration;
     }
     else {
-        if (m_count == 0) {
-            printableRes = "start";
-            res = TupletState::START;
-            ++m_count;
-            m_value = faceValue;
-        }
-        else {
-            int count = 1;
-            int value = faceValue;
-            while (value > m_value) {
-                m_count *= 2;
-                ++m_value;
-            }
-            while (m_value > value) {
-                count *= 2;
-                ++value;
-            }
-            m_count += count;
-            if (m_count >= actualNotes) {
-                printableRes = "stop";
-                res = TupletState::STOP;
-                m_count = 0;
-            }
-            else {
-                res = TupletState::MID;
-            }
+        // Check if this note belongs to a different tuplet group
+        // A new group starts only if we've exceeded the current group's duration
+        // Don't start new group just because note value changed (allows mixed eighths/sixteenths)
+        if (tick >= m_groupStartTick + m_groupDuration) {
+            // Close previous tuplet and start new one
+            res = TupletState::STOPSTART;
+            m_groupStartTick = tick;
+            m_groupDuration = groupDuration;
         }
     }
-    /*
-    qDebug()
-            << "TupletHandler::newNote()"
-            << "actualNotes" << actualNotes
-            << "normalNotes" << normalNotes
-            << "faceValue" << faceValue
-            << "res" << printableRes
-               ;
-               */
+    // else: continue in same tuplet group (no action needed)
+
     return res;
 }
 
@@ -261,6 +378,37 @@ MxmlConverter::MxmlConverter(const EncFile& ef)
 
 
 //---------------------------------------------------------
+// isTablature - check if a part is tablature (should be skipped)
+//---------------------------------------------------------
+
+bool MxmlConverter::isTablature(const int partNr) const
+{
+    if (m_ef.lines().size() > 0) {
+        const auto& line = m_ef.lines().at(0);
+        if (static_cast<size_t>(partNr) < line.lineStaffData().size()) {
+            const auto& data = line.lineStaffData().at(partNr);
+            if (data.m_staffType == staffType::TAB || data.m_clef == clefType::TAB) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+//---------------------------------------------------------
+// isHidden - check if a part is hidden from the printed score
+//---------------------------------------------------------
+
+bool MxmlConverter::isHidden(const int partNr) const
+{
+    if (static_cast<size_t>(partNr) < m_ef.staves().size())
+        return !m_ef.staves().at(partNr).m_showStaff;
+    return false;
+}
+
+
+//---------------------------------------------------------
 // convertEncToMxml - convert Encore to MusicXML
 //---------------------------------------------------------
 
@@ -291,7 +439,7 @@ void MxmlConverter::attributes(const int partNr)
     m_writer.writeDivisions(240);
     key();
     time();
-    m_writer.writeStaves(m_ef.staves().at(partNr).m_nstaves);
+    m_writer.writeStaves(nstaves(partNr));
     clefs(partNr);
     m_writer.writeElementEnd();
 }
@@ -402,17 +550,20 @@ void MxmlConverter::clefs(const int partNr)
 {
     // TBD (too) simple implementation: use clef of first measure only
     const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures) {
-        const int nstaves = m_ef.staves().at(partNr).m_nstaves;
+    if (hasMeasures && m_ef.lines().size() > 0) {
+        const int partStaves = nstaves(partNr);
         const auto& encline = m_ef.lines().at(0);   // first system
-        for (int i = 0; i < nstaves; ++i) {
+        for (int i = 0; i < partStaves; ++i) {
+            if (static_cast<size_t>(partNr + i) >= encline.lineStaffData().size()) {
+                break;
+            }
             const auto& data = encline.lineStaffData().at(partNr + i);
             const auto ct = data.m_clef;
             QString sign;
             int line { 0 };
             int octCh { 0 };
             if (encClef2xml(ct, sign, line, octCh)) {
-                m_writer.writeClef((nstaves > 1) ? i : -1, sign, line, octCh);
+                m_writer.writeClef((partStaves > 1) ? i : -1, sign, line, octCh);
             }
         }
     }
@@ -467,6 +618,10 @@ int encKeyToFifths(unsigned int key)
         //   c   f  bf  ef  af  df  gf  cf  g   d   a   e   b  fs  cs
         /**/ 0, -1, -2, -3, -4, -5, -6, -7, 1,  2,  3,  4,  5,  6,  7
     };
+    if (key >= v.size()) {
+        qDebug() << "encKeyToFifths: key out of range:" << key;
+        return 0;
+    }
     return v.at(key);
 }
 
@@ -479,11 +634,14 @@ int encKeyToFifths(unsigned int key)
 void MxmlConverter::key()
 {
     const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures) {
+    if (hasMeasures && m_ef.lines().size() > 0) {
         const auto& line = m_ef.lines().at(0);
-        const auto& data = line.lineStaffData().at(0);
-        quint8 kcType = data.m_key;
-        m_writer.writeKey(encKeyToFifths(kcType));
+        if (line.lineStaffData().size() > 0) {
+            const auto& data = line.lineStaffData().at(0);
+            quint8 kcType = data.m_key;
+            m_currentFifths = encKeyToFifths(kcType);
+            m_writer.writeKey(m_currentFifths);
+        }
     }
 }
 
@@ -530,25 +688,25 @@ static bool isGrace(const EncMeasureElemNote* const note)
 
 
 //---------------------------------------------------------
-// Determine if note's duration
-// TODO: refactor (common code shared by note and rest
+// calculateDuration - calculate duration from faceValue, dots, and tuplet info
+// Common logic shared by durationNote and durationRest
 //---------------------------------------------------------
 
-static int durationNote(const EncMeasureElemNote* const note)
+static int calculateDuration(const quint8 faceValue, const quint8 dotControl,
+                             const quint8 actualNotes, const quint8 normalNotes)
 {
-    int duration = faceValue2duration(note->m_faceValue & 0x0F);
-    for (int i = 0; i < (note->m_dotControl & 3); ++i) {
+    int duration = faceValue2duration(faceValue & 0x0F);
+
+    // Apply dots (each dot adds half of previous value)
+    for (int i = 0; i < (dotControl & 3); ++i) {
         duration *= 3;
         duration /= 2;
     }
 
-    if (note->actualNotes() > 0 && note->normalNotes() > 0) {
-        duration *= note->normalNotes();
-        duration /= note->actualNotes();
-    }
-
-    if (isGrace(note)) {
-        return 0;
+    // Apply time modification (tuplet)
+    if (actualNotes > 0 && normalNotes > 0) {
+        duration *= normalNotes;
+        duration /= actualNotes;
     }
 
     return duration;
@@ -556,24 +714,100 @@ static int durationNote(const EncMeasureElemNote* const note)
 
 
 //---------------------------------------------------------
-// Determine if rest's duration
-// TODO: refactor (common code shared by note and rest
+// durationNote - determine note's duration
+//---------------------------------------------------------
+
+// isStandardDuration - true iff d matches a known MusicXML note duration value.
+// Non-standard values (e.g. raw MIDI durations in live-recorded files) are excluded
+// so that face-value-based duration is used instead.
+static bool isStandardDuration(const int d)
+{
+    switch (d) {
+    // Plain note durations (whole..128th)
+    case 960: case 480: case 240: case 120: case 60: case 30: case 15: case 7:
+    // Single-dotted (base × 3/2)
+    case 720: case 360: case 180: case 90: case 45:
+    // Double-dotted (base × 7/4): 480×7/4=840, 240×7/4=420, 120×7/4=210, 60×7/4=105
+    case 840: case 420: case 210: case 105:
+    // Triple-dotted (base × 15/8): 480×15/8=900, 240×15/8=450, 120×15/8=225
+    case 900: case 450: case 225:
+    // Triplets (base × 2/3)
+    case 640: case 320: case 160: case 80: case 40: case 20:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static int durationNote(const EncMeasureElemNote* const note)
+{
+    if (isGrace(note)) {
+        return 0;
+    }
+
+    // Use realDuration when it encodes a valid written duration:
+    // - a standard note length (plain, dotted, triplet), OR
+    // - a value that matches the face-value note under a recognised tuplet ratio.
+    // For live-recorded (MIDI-input) files the raw tick difference can be much
+    // larger than the written duration (e.g. 2564 in a 960-tick measure) and
+    // would overflow if used directly; those fall through to the face value.
+    if (note->m_realDuration > 0) {
+        if (isStandardDuration(note->m_realDuration))
+            return note->m_realDuration;
+        // Tuplet check: if detectTuplet recognises this as a rational tuplet of
+        // the face-value note, use realDuration (e.g. 48 = 16th × 4/5 quintuplet).
+        int dummy = 0;
+        if (detectTuplet(note->m_realDuration, note->m_faceValue, dummy) > 0)
+            return note->m_realDuration;
+    }
+
+    // Fall back to the plain face-value duration.
+    // The Encore dotControl byte is not reliably a dot count — the MuseScore
+    // importer ignores it and infers dots from realDuration instead.
+    // Applying dotControl here produces non-standard values (e.g. 135 from a
+    // 16th with dotControl=2) that make <duration> inconsistent with <type>.
+    return faceValue2duration(note->m_faceValue & 0x0F);
+}
+
+
+//---------------------------------------------------------
+// durationRest - determine rest's duration
 //---------------------------------------------------------
 
 static int durationRest(const EncMeasureElemRest* const rest)
 {
-    int duration = faceValue2duration(rest->m_faceValue & 0x0F);
-    for (int i = 0; i < (rest->m_dotControl & 3); ++i) {
-        duration *= 3;
-        duration /= 2;
+    // Compute the rest duration using the same approach as the MuseScore Encore
+    // importer: use face value for the base duration, then detect dots from the
+    // dotControl field (which stores the sounding duration in Encore ticks).
+    //
+    // We intentionally ignore m_tuplet: in MIDI-recorded Encore files the tuplet
+    // byte for rests is often noise (e.g. 11:6), and the old calculateDuration()
+    // path with raw actualNotes/normalNotes produced non-standard values like 49
+    // that crash MuseScore's MusicXML importer.
+    const int fv   = rest->m_faceValue & 0x0F;
+    const int base = faceValue2duration(fv);
+    if (base <= 0) return 0;
+
+    // Detect dot count from dotControl (visual sounding duration).
+    // dotControl == base     → 0 dots (plain)
+    // dotControl == base*3/2 → 1 dot  (dotted)
+    // dotControl == base*7/4 → 2 dots (double-dotted)
+    int dots = 0;
+    if (rest->m_dotControl > 0) {
+        const int dc = static_cast<int>(rest->m_dotControl);
+        if      (dc == base * 3 / 2) dots = 1;
+        else if (dc == base * 7 / 4) dots = 2;
+        else if (dc == base * 15 / 8) dots = 3;
+        // Non-standard value: fall through (dots = 0, plain face value)
     }
 
-    if (rest->actualNotes() > 0 && rest->normalNotes() > 0) {
-        duration *= rest->normalNotes();
-        duration /= rest->actualNotes();
-    }
-
-    return duration;
+    // Apply dots using the correct formula (not iterative *3/2 which gives 9/4 for 2 dots):
+    // 0 dots: base, 1 dot: base*3/2, 2 dots: base*7/4, 3 dots: base*15/8
+    int result = base;
+    if      (dots == 1) result = base * 3 / 2;
+    else if (dots == 2) result = base * 7 / 4;
+    else if (dots == 3) result = base * 15 / 8;
+    return result;
 }
 
 
@@ -661,12 +895,38 @@ static QString encRepeatToWords(const repeatType repeat)
 // notesAreInChord - determine if note1 and note2 are in a chord together
 //---------------------------------------------------------
 
-static bool notesAreInChord(const EncMeasureElemNote* const note1,
-                            const EncMeasureElemNote* const note2)
+// MIDI-recorded chords have simultaneous notes at ticks 0,1,2,... due to recording
+// latency. CHORD_MIDI_THRESHOLD defines the window for grouping them as a single chord.
+static constexpr int CHORD_MIDI_THRESHOLD = 2 * CHORD_CLUSTER_THRESHOLD;  // = 8
+
+// isChordOf - true iff note2's tick is within CHORD_MIDI_THRESHOLD of rootTick.
+static bool isChordOf(const int rootTick, const EncMeasureElemNote* const note2)
 {
-    return note1 && note2
-            && note1->m_tick == note2->m_tick
-            && note1->m_xoffset == note2->m_xoffset;
+    if (!note2 || rootTick < 0) return false;
+    const int delta = (int)note2->m_tick - rootTick;
+    return delta >= 0 && delta < CHORD_MIDI_THRESHOLD;
+}
+
+
+// theoreticalDurTicks - the time-signature-correct measure duration in Encore ticks.
+// m_durTicks comes from the raw MIDI recording and can be off by a few ticks.
+// This computes what the measure *should* be from the written time signature.
+static int theoreticalDurTicks(const EncMeasure& m)
+{
+    if (m.m_timeSigNum == 0 || m.m_timeSigDen == 0)
+        return m.m_durTicks;
+    int beatTicks = 0;
+    switch (m.m_timeSigDen) {
+    case 1:  beatTicks = 960; break;
+    case 2:  beatTicks = 480; break;
+    case 4:  beatTicks = 240; break;
+    case 8:  beatTicks = 120; break;
+    case 16: beatTicks = 60;  break;
+    case 32: beatTicks = 30;  break;
+    case 64: beatTicks = 15;  break;
+    default: beatTicks = 240; break;
+    }
+    return m.m_timeSigNum * beatTicks;
 }
 
 
@@ -712,10 +972,32 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
     barlineLeft(partNr, measureNr);
 
+    // Check for time signature change
+    bool timeSigChanged = false;
+    if (measureNr > 0) {
+        const auto& prevM = m_ef.measures().at(measureNr - 1);
+        if (m.m_timeSigNum != prevM.m_timeSigNum || m.m_timeSigDen != prevM.m_timeSigDen) {
+            timeSigChanged = true;
+        }
+    }
+
     if (measureNr == 0)
         attributes(partNr);
-    else if (keyCh)
-        keyChange(keyCh);
+    else if (keyCh || timeSigChanged) {
+        // Write attributes with key change and/or time signature change
+        m_writer.writeElementStart("attributes");
+        if (keyCh) {
+            quint8 kcType = keyCh->m_tipo;
+            m_currentFifths = encKeyToFifths(kcType);
+            m_writer.writeKey(m_currentFifths);
+            qDebug() << "writeKeyChange" << "kcType" << kcType << "fifths" << m_currentFifths;
+        }
+        if (timeSigChanged) {
+            m_writer.writeTime(m.m_timeSigNum, m.m_timeSigDen);
+            qDebug() << "writeTimeChange" << m.m_timeSigNum << "/" << m.m_timeSigDen;
+        }
+        m_writer.writeElementEnd();
+    }
 
     qDebug() << "xxx_repeat_sym"
              << "measureNr" << measureNr
@@ -728,96 +1010,231 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
         repeatLeft(m.repeat());
     }
 
-    TupletHandler th;
-
     // write notes and rests for all voices. As elem->m_tick sometimes differs slightly
     // from the expected value, simply assume all voices start at tick = 0 and no gaps
     // are present.
 
+    // Tracks filtered MIDI artifact tie-senders across all voices in this measure.
+    // A note with (grace1 & 0x0F) == 1 filtered by rdur<15 implies its receiver
+    // (grace1 & 0x0F == 2, same staff/voice/pitch) should also be filtered.
+    std::set<std::tuple<int,int,int>> filteredTieSenderPitches;
+
     int tick = 0;
     for (const auto v : voices) {
-        const EncMeasureElemNote* prevnote = nullptr;
+        TupletHandler th;  // Each voice has its own tuplet handler
+        // chordRootTick / chordRootTick2 track the tick of the last chord-root note
+        // in each pass (updated only for non-chord notes — no cascading).
+        // Used for chord detection: a note is a chord extension if its tick is within
+        // CHORD_MIDI_THRESHOLD of chordRootTick. This avoids cascading (chain detection)
+        // and handles MIDI-recorded chords where simultaneous notes land at ticks 0,1,2,...
+        int chordRootTick = -999;   // first pass
+        int chordRootTick2 = -999;  // second pass
         if (tick > 0) {
             // explicit backup to prevent error message at start of voice
             m_writer.writeBackupForward(-tick, 0);
             tick = 0;
         }
+
+        // Use time-signature-correct measure duration, not the raw MIDI m_durTicks.
+        // For MIDI-recorded files, m_durTicks can be a few ticks off from the
+        // theoretical value (e.g. 958 or 962 instead of 960 for 4/4).
+        const int measureDur = theoreticalDurTicks(m);
+
+        // First pass: collect valid elements, applying MIDI artifact filter.
+        // The filter skips notes with realDuration < 15 that Encore records as
+        // MIDI ghost notes (not displayed in the score).
+        std::vector<EncMeasureElem*> voiceElems;
         for (const auto& elem : m.measureElems()) {
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
-                int duration = 0;
-                if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
-                    /*
-                    if (elem->m_tick != tick) {
-                        qDebug() << "xxx_voice_timing"
-                                 << "tick_delta"
-                                 << "measureNr" << measureNr
-                                 << "voice" << v
-                                 << "tick" << tick
-                                 << "elem->m_tick" << elem->m_tick
-                                    ;
-                        writeBackupForward(elem->m_tick - tick, v);
-                        tick = elem->m_tick;
-                    }
-                    */
-
-                    const bool isChord = notesAreInChord(prevnote, curnote);
-                    if (isChord) {
-                        qDebug() << "xxx_chord"
-                                 << "measureNr" << measureNr
-                                 << "voice" << v
-                                 << "elem->m_tick" << elem->m_tick
-                                    ;
+                if (elem->m_tick > measureDur) continue;  // Skip garbage
+                if (const auto* note = dynamic_cast<const EncMeasureElemNote*>(elem)) {
+                    // isChord: is this note a chord extension of the current chord root?
+                    // Uses CHORD_MIDI_THRESHOLD so MIDI-recorded chords (notes at ticks
+                    // 0,1,2,3...) are grouped correctly without overflowing the measure.
+                    const bool isChord = isChordOf(chordRootTick, note);
+                    if (!isChord) {
+                        // Skip if the measure is already full, OR if this note's written
+                        // duration would overflow it.  The second check prevents a single
+                        // long-realDuration note (e.g. a MIDI-recorded dotted half at
+                        // beat 3 of a 4/4 bar) from pushing tick past m_durTicks.
+                        const int noteDur = durationNote(note);
+                        if (tick >= measureDur || tick + noteDur > measureDur)
+                            continue;
                     }
 
-                    const auto direction = m_nc.direction(curnote);
-                    if (direction
-                            && direction->type() == ornamentType::STAFFTEXT
-                            && direction->m_tind < m_ef.text().m_texts.size()) {
-                        m_writer.writeWords(m_ef.text().m_texts.at(direction->m_tind));
-                    }
-                    else if (direction
-                             && direction->type() == ornamentType::TEMPO) {
-                        m_writer.writeMetronome(faceValue2xml((direction->m_noto & 0x0F) + 1),
-                                                (direction->m_noto & 0x80) ? 1 : 0,
-                                                direction->m_tempo);
+                    // Update chordRootTick before filter checks (as MuseScore does with
+                    // prevMidiTick): even filtered notes establish the root for subsequent
+                    // chord-extension detection.
+                    if (!isChord)
+                        chordRootTick = (int)note->m_tick;
+
+                    // MIDI artifact filter
+                    if (note->m_realDuration > 0 && note->m_realDuration < 15) {
+                        const quint8 fv = note->m_faceValue & 0x0F;
+                        const int fvBase = faceValue2duration(fv);
+                        if (fvBase <= 15) {
+                            // 64th/128th notes: filter unless tie-start or chord extension
+                            if (!m_nc.tieStart(note) && !isChord) {
+                                if ((note->m_grace1 & 0x0F) == 1)
+                                    filteredTieSenderPitches.insert(
+                                        { partNr, (int)v, (int)note->m_semiTonePitch });
+                                continue;
+                            }
+                        } else {
+                            // Longer face values: filter unless at the chord-cluster boundary
+                            // (realDuration <= CHORD_CLUSTER_THRESHOLD means it may be a
+                            // live-recorded chord root whose cluster partner fell just outside)
+                            if (note->m_realDuration > CHORD_CLUSTER_THRESHOLD)
+                                continue;
+                        }
                     }
 
-                    const auto wedgeStart = m_nc.wedgeStart(curnote);
-                    const auto wedgeStop = m_nc.wedgeStop(curnote);
-
-                    if (wedgeStart) {
-                        m_writer.writeWedge((wedgeStart->m_speguleco & 0x01)
-                                            ? WedgeType::DIMINUENDO
-                                            : WedgeType::CRESCENDO);
+                    // Cascade filter: tie-receiver whose sender was filtered
+                    if ((note->m_grace1 & 0x0F) == 2) {
+                        auto key = std::make_tuple(partNr, (int)v, (int)note->m_semiTonePitch);
+                        if (filteredTieSenderPitches.count(key)) {
+                            filteredTieSenderPitches.erase(key);
+                            continue;
+                        }
                     }
 
-                    note(curnote, partNr, th, isChord);
-                    duration = isChord ? 0 : durationNote(curnote);
-                    prevnote = curnote;
-
-                    if (wedgeStop) {
-                        m_writer.writeWedge(WedgeType::STOP);
-                    }
+                    voiceElems.push_back(elem);
+                    tick += isChord ? 0 : durationNote(note);
                 }
-                else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
-                    /*
-                    if (elem->m_tick != tick) {
-                        qDebug() << "xxx_voice_timing"
-                                 << "measureNr" << measureNr
-                                 << "voice" << v
-                                 << "tick" << tick
-                                 << "elem->m_tick" << elem->m_tick
-                                    ;
-                        writeBackupForward(elem->m_tick - tick, v);
-                        tick = elem->m_tick;
-                    }
-                    */
-                    rest(currest, partNr, th);
-                    duration = durationRest(currest);
-                    prevnote = nullptr; // can't be part of chord
+                else if (const auto* rest = dynamic_cast<const EncMeasureElemRest*>(elem)) {
+                    int restDur = durationRest(rest);
+                    if (restDur <= 0) continue;  // Skip invalid rests
+                    if (tick + restDur > measureDur) continue;  // Skip rests that overflow
+                    chordRootTick = (int)elem->m_tick;
+                    voiceElems.push_back(elem);
+                    tick += restDur;
                 }
-                tick += duration;
             }
+        }
+
+        // Reset for second pass
+        tick = 0;
+        chordRootTick2 = -999;  // reset for second pass
+        int lastRootDur = 0;    // duration of last root note (for chord note <duration>)
+
+        // Second pass: write elements with proper tuplet handling
+        for (size_t i = 0; i < voiceElems.size(); ++i) {
+            const auto& elem = voiceElems[i];
+
+            // Check if next NON-CHORD element is a tuplet note (for closing current tuplet)
+            bool nextNonChordIsTuplet = false;
+            bool isLastNonChordInMeasure = true;
+            const EncMeasureElemNote* curAsNote = dynamic_cast<const EncMeasureElemNote*>(elem);
+            for (size_t j = i + 1; j < voiceElems.size(); ++j) {
+                if (const auto* nextNote = dynamic_cast<const EncMeasureElemNote*>(voiceElems[j])) {
+                    // Skip chord notes (use curAsNote's tick as the root for lookahead)
+                    if (curAsNote && isChordOf((int)curAsNote->m_tick, nextNote)) {
+                        continue;
+                    }
+                    // Use same detection as note(): check stored actualNotes first,
+                    // then detectTuplet (for MIDI-recorded files where actual/normal == 0)
+                    int nextActual = nextNote->actualNotes();
+                    if (nextActual == 0) {
+                        int dummy = 0;
+                        nextActual = detectTuplet(durationNote(nextNote), nextNote->m_faceValue, dummy);
+                    }
+                    nextNonChordIsTuplet = (nextActual > 0);
+                    isLastNonChordInMeasure = false;
+                    break;
+                }
+                else if (const auto* nextRest = dynamic_cast<const EncMeasureElemRest*>(voiceElems[j])) {
+                    int nextActual = nextRest->actualNotes();
+                    if (nextActual == 0) {
+                        int dummy = 0;
+                        nextActual = detectTuplet(durationRest(nextRest), nextRest->m_faceValue, dummy);
+                    }
+                    nextNonChordIsTuplet = (nextActual > 0);
+                    isLastNonChordInMeasure = false;
+                    break;
+                }
+            }
+
+            int duration = 0;
+            if (const EncMeasureElemNote* const curnote = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
+                // Same chord detection as first pass: compare to chord root, not previous note.
+                const int savedChordRootTick2 = chordRootTick2;
+                const bool isChord = isChordOf(chordRootTick2, curnote);
+                if (!isChord)
+                    chordRootTick2 = (int)curnote->m_tick;
+
+                // Second-pass overflow guard: a note that was accepted by the first pass as a
+                // chord extension (isChord=true → no overflow check) may appear as a root here
+                // if chordRootTick2 differs from chordRootTick (they can diverge when elements
+                // filtered in the first pass alter chordRootTick but not chordRootTick2).
+                // Skip root notes whose written duration would push past the measure boundary.
+                if (!isChord) {
+                    const int nd = durationNote(curnote);
+                    if (tick + nd > measureDur) {
+                        chordRootTick2 = savedChordRootTick2;  // undo root update
+                        continue;
+                    }
+                }
+
+                // Do NOT use raw elem->m_tick for positioning within a voice.
+                // MuseScore's importer uses cumTick (written duration) exclusively;
+                // MIDI timing from e->tick is only used for chord detection.
+                // Writing <forward> elements based on elem->m_tick introduces MIDI
+                // jitter and, critically, MuseScore does NOT count <forward> toward
+                // the voice's duration — only actual note/rest elements count.
+                (void)elem->m_tick;
+
+                const auto direction = m_nc.direction(curnote);
+                if (direction
+                        && direction->type() == ornamentType::STAFFTEXT
+                        && direction->m_tind < m_ef.text().m_texts.size()) {
+                    m_writer.writeWords(m_ef.text().m_texts.at(direction->m_tind));
+                }
+                else if (direction
+                         && direction->type() == ornamentType::TEMPO) {
+                    m_writer.writeMetronome(faceValue2xml((direction->m_noto & 0x0F) + 1),
+                                            (direction->m_noto & 0x80) ? 1 : 0,
+                                            direction->m_tempo);
+                }
+
+                const auto wedgeStart = m_nc.wedgeStart(curnote);
+                const auto wedgeStop = m_nc.wedgeStop(curnote);
+
+                if (wedgeStart) {
+                    m_writer.writeWedge((wedgeStart->m_speguleco & 0x01)
+                                        ? WedgeType::DIMINUENDO
+                                        : WedgeType::CRESCENDO);
+                }
+
+                bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
+                note(curnote, partNr, th, isChord, forceCloseTuplet, tick, lastRootDur);
+                duration = isChord ? 0 : durationNote(curnote);
+                if (!isChord) lastRootDur = duration;
+
+                if (wedgeStop) {
+                    m_writer.writeWedge(WedgeType::STOP);
+                }
+            }
+            else if (const EncMeasureElemRest* const currest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
+                chordRootTick2 = (int)elem->m_tick;
+                bool forceCloseTuplet = th.needsClose() && (!nextNonChordIsTuplet || isLastNonChordInMeasure);
+                rest(currest, partNr, th, forceCloseTuplet, tick);
+                duration = durationRest(currest);
+            }
+            tick += duration;
+        }
+
+        // Fill any remaining gap to the measure boundary with a rest so that
+        // MuseScore counts the gap toward the voice duration (<forward> elements
+        // are ignored by MuseScore for this purpose).
+        if (tick < measureDur) {
+            const int gap = measureDur - tick;
+            m_writer.writeGapRest(gap, v, nstaves(partNr) > 1 ? 1 : 0);
+            tick = measureDur;
+        }
+
+        // Reset tuplet handler state for next voice
+        if (th.needsClose()) {
+            th.close();
         }
     }
 
@@ -836,22 +1253,19 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 // note - write a note
 //---------------------------------------------------------
 
-void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord)
+void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr, TupletHandler& th, const bool chord, const bool forceCloseTuplet, const int calculatedTick, const int chordRootDur)
 {
     char step = ' ';
     int alter = 0;
     int octave = 0;
-    int fifths = 0;
-    // TBD (too) simple implementation: use keysig of first staff of first measure only
-    // TODO: remove duplicate code
-    const bool hasMeasures = m_ef.measures().size() > 0;
-    if (hasMeasures) {
-        const auto& line = m_ef.lines().at(0);
-        const auto& data = line.lineStaffData().at(0);
-        quint8 kcType = data.m_key;
-        fifths = encKeyToFifths(kcType);
-    }
-    midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), fifths, step, alter, octave);
+    // For chord notes, use the chord root's duration so that the MusicXML importer's
+    // measure-duration accumulation (mDura in pass 1) does not double-count chord notes
+    // that have different durations from their root (e.g. triplet 8th extension of a
+    // quarter root in a MIDI-recorded chord cluster).
+    const int noteDur = (chord && chordRootDur > 0) ? chordRootDur : durationNote(note);
+
+    // Use current key signature (tracked through key changes) for pitch spelling
+    midipitch2xml(note->m_semiTonePitch, static_cast<accidentalType>(note->m_alterationGlyph), m_currentFifths, step, alter, octave);
     m_writer.writeElementStart("note");
 
     m_writer.writeGrace(note->graceType());
@@ -863,7 +1277,7 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     m_writer.writePitch(step, alter, octave);
 
     if (!isGrace(note)) {
-        m_writer.writeElement("duration", durationNote(note));
+        m_writer.writeElement("duration", noteDur);
     }
 
     const bool tieStart = m_nc.tieStart(note);
@@ -877,12 +1291,28 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
     }
 
     m_writer.writeVoice(hasMultipleVoices(partNr), note->m_voice + 1);
-    m_writer.writeElement("type", faceValue2xml(note->m_faceValue & 0x0F));
-    m_writer.writeDots(note->m_dotControl & 3);
-    m_writer.writeTimeModification(note->actualNotes(), note->normalNotes());
-    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
-    m_writer.writeStaff(nstaves, (note->m_voice < 4) ? 1 : 2);
-    const auto tupletState = th.newNote(note->actualNotes(), note->normalNotes(), note->m_faceValue & 0x0F);
+    m_writer.writeElement("type", correctNoteType(noteDur, note->m_faceValue));
+    // Always calculate dots from written duration (m_dotControl is unreliable in old format files)
+    const int noteDots = calculateDots(noteDur, note->m_faceValue);
+    m_writer.writeDots(noteDots);
+
+    // Detect tuplet from duration if not set in file
+    int noteActual = note->actualNotes();
+    int noteNormal = note->normalNotes();
+    if (noteActual == 0 && noteDur > 0) {
+        noteActual = detectTuplet(noteDur, note->m_faceValue, noteNormal);
+    }
+    m_writer.writeTimeModification(noteActual, noteNormal);
+    m_writer.writeStaff(nstaves(partNr), (note->m_voice < 4) ? 1 : 2);
+    // Don't count chord notes for tuplet state - they're simultaneous with the previous note
+    // Use calculated tick for proper grouping (m_tick from Encore can be inconsistent)
+    auto tupletState = chord ? TupletState::NONE : th.newNote(noteActual, noteNormal, calculatedTick, noteDur);
+    // Force close tuplet if this is the last tuplet note before a non-tuplet or end of measure
+    // But NOT for chord notes - they shouldn't carry tuplet brackets
+    if (forceCloseTuplet && !chord && tupletState == TupletState::NONE && th.needsClose()) {
+        tupletState = TupletState::STOP;
+        th.close();
+    }
     m_writer.writeTuplet(tupletState);
 
 
@@ -914,15 +1344,15 @@ void MxmlConverter::note(const EncMeasureElemNote* const note, const int partNr,
 
 
 //---------------------------------------------------------
-// part - write part n
+// part - write part (encPartNr is Encore index, xmlPartNr is MusicXML index)
 //---------------------------------------------------------
 
-void MxmlConverter::part(const int n)
+void MxmlConverter::part(const int encPartNr, const int xmlPartNr)
 {
-    const QString partId = QString("P%1").arg(n + 1);
+    const QString partId = QString("P%1").arg(xmlPartNr);
     m_writer.writeElementStartWithAttribute("part", "id", partId);
     for (unsigned int i = 0; i < m_ef.measures().size(); ++i)
-        measure(n, i);
+        measure(encPartNr, i);
     m_writer.writeElementEnd();
 }
 
@@ -934,10 +1364,16 @@ void MxmlConverter::part(const int n)
 void MxmlConverter::partList()
 {
     m_writer.writeElementStart("part-list");
-    int count = 0;
-    for (const auto& s : m_ef.staves()) {
-        ++count;
-        scorePart(count, s);
+    int xmlPartNr = 0;
+    for (size_t i = 0; i < m_ef.staves().size(); ++i) {
+        if (isTablature(i) || isHidden(i)) {
+            qDebug() << "Skipping part" << i
+                     << "(tablature:" << isTablature(i)
+                     << "hidden:" << isHidden(i) << ")";
+            continue;
+        }
+        ++xmlPartNr;
+        scorePart(xmlPartNr, m_ef.staves().at(i));
     }
     m_writer.writeElementEnd();
 }
@@ -949,8 +1385,12 @@ void MxmlConverter::partList()
 
 void MxmlConverter::parts()
 {
+    int xmlPartNr = 0;
     for (unsigned int count = 0; count < m_ef.staves().size(); ++count) {
-        part(count);
+        if (isTablature(count) || isHidden(count))
+            continue;
+        ++xmlPartNr;
+        part(count, xmlPartNr);
     }
 }
 
@@ -972,18 +1412,32 @@ void MxmlConverter::repeatLeft(const repeatType repeat)
 // rest - write a rest
 //---------------------------------------------------------
 
-void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th)
+void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr, TupletHandler &th, const bool forceCloseTuplet, const int calculatedTick)
 {
+    const int restDur = durationRest(rest);  // Calculate duration once for consistency
+
     m_writer.writeElementStart("note");
     m_writer.writeElement("rest");
-    m_writer.writeElement("duration", durationRest(rest));
+    m_writer.writeElement("duration", restDur);
     m_writer.writeVoice(hasMultipleVoices(partNr), rest->m_voice + 1);
-    m_writer.writeElement("type", faceValue2xml(rest->m_faceValue & 0x0F));
-    m_writer.writeDots(rest->m_dotControl & 3);
-    m_writer.writeTimeModification(rest->actualNotes(), rest->normalNotes());
-    const int nstaves = m_ef.staves().at(partNr).m_nstaves;
-    m_writer.writeStaff(nstaves, (rest->m_voice < 4) ? 1 : 2);
-    const auto tupletState = th.newNote(rest->actualNotes(), rest->normalNotes(), rest->m_faceValue & 0x0F);
+    // Use correctNoteType to fix type when duration doesn't match faceValue (common Encore bug)
+    m_writer.writeElement("type", correctNoteType(restDur, rest->m_faceValue));
+    // Always calculate dots from actual duration (m_dotControl is unreliable in old format files)
+    const int restDots = calculateDots(restDur, rest->m_faceValue);
+    m_writer.writeDots(restDots);
+
+    // Use explicit tuplet info from Encore (don't auto-detect for rests)
+    const int restActual = rest->actualNotes();
+    const int restNormal = rest->normalNotes();
+    m_writer.writeTimeModification(restActual, restNormal);
+    m_writer.writeStaff(nstaves(partNr), (rest->m_voice < 4) ? 1 : 2);
+    // Use calculated tick for proper grouping (m_tick from Encore can be inconsistent)
+    auto tupletState = th.newNote(restActual, restNormal, calculatedTick, restDur);
+    // Force close tuplet if this is the last tuplet note before a non-tuplet or end of measure
+    if (forceCloseTuplet && tupletState == TupletState::NONE && th.needsClose()) {
+        tupletState = TupletState::STOP;
+        th.close();
+    }
     m_writer.writeTuplet(tupletState);
     m_writer.writeElementEnd();
 }
@@ -995,7 +1449,7 @@ void MxmlConverter::rest(const EncMeasureElemRest* const rest, const int partNr,
 
 void MxmlConverter::scorePart(const int n, const EncInstrument &instr)
 {
-    m_writer.writeScorePart(n, instr.m_name);
+    m_writer.writeScorePart(n, instr.m_name, instr.m_midiProgram);
 }
 
 

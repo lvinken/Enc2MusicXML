@@ -51,6 +51,11 @@ enum class CharSize : char {
     TWO_BYTES
 };
 
+// Notes within this many Encore ticks of each other are treated as simultaneous
+// (live-recorded chord timing drift).  Used in calculateRealDurations() to
+// give the first note of a chord a realistic duration instead of 1-3 ticks.
+static constexpr int CHORD_CLUSTER_THRESHOLD = 4;
+
 
 //---------------------------------------------------------
 // the header ("SCOW") block
@@ -61,6 +66,8 @@ class EncHeader
 public:
     EncHeader();
     bool read(QDataStream& data);
+    bool isOldFormat() const { return m_chuMagio == 0xC2; }
+    bool isVeryOldFormat() const { return m_chuMagio == 0xA6; }
     // TODO private:
     QString m_magic;                     // ENCORE_STRUKTURO::magio
     quint8  m_chuMagio          { 0 };   // ENCORE_STRUKTURO::chu_magio
@@ -85,12 +92,14 @@ class EncInstrument                     // instrumento
 {
 public:
     EncInstrument();
-    bool read(QDataStream& data, const quint32 var_size);
+    bool read(QDataStream& data, const quint32 var_size, bool probeEncoding = false);
     QString m_id;
     quint32 m_offset            { 0 };
     QString m_name;
     CharSize charSize() const;          // chu_utf8
-    int m_nstaves               { 0 };
+    int  m_nstaves              { 0 };
+    bool m_showStaff            { true };  // false = hidden from printed score
+    int  m_midiProgram          { 0 };     // 1-indexed GM program (0 = not set)
 };
 
 QDebug operator<<(QDebug dbg, const EncInstrument& instr);
@@ -152,6 +161,7 @@ public:
     clefType  m_clef            { clefType::G };        // clef
     quint8  m_key               { 0 };                  // tonalo
     quint8  m_pageIdx           { 0 };
+    bool    m_showStaff         { true };               // byte +19: 0x00 = hidden
     staffType  m_staffType      { staffType::MELODY };  // tipo
     quint8  m_instrStaffIdx     { 0 };
 };
@@ -211,6 +221,7 @@ public:
     quint8  m_size              { 0 };  // offset  4                ENCORE_OBJEKTO::grando
     quint8  m_staffIdx          { 0 };  // offset  5                ENCORE_OBJEKTO::liniaro
     quint8  m_xoffset           { 0 };  // offset 10                ENCORE_OBJEKTO::kie
+    qint16  m_realDuration      { -1 }; // calculated from ticks, -1 means not calculated
 };
 
 
@@ -248,6 +259,7 @@ class EncMeasureElemTie : public EncMeasureElem
 public:
     EncMeasureElemTie(quint16 tick, quint8  type, quint8 voice);
     bool read(QDataStream& data);
+    bool m_isTieStart { false };  // true when direction byte == 0xfe (outgoing tie)
 };
 
 
@@ -399,7 +411,8 @@ class EncMeasure                        // ENCORE_MEZURO
 {
 public:
     EncMeasure() = default;
-    bool read(QDataStream& data, const quint32 var_size);
+    bool read(QDataStream& data, const quint32 var_size, bool oldFormat = false, bool veryOldFormat = false);
+    void calculateRealDurations();       // Calculate real durations from ticks
     const MeasureElemVec& measureElems() const { return m_measureElems; }
     void push_back(EncMeasureElem* elem) { m_measureElems.push_back(elem); }
     barlineType barTypeStart() const { return static_cast<barlineType>(m_barTypeStart); }

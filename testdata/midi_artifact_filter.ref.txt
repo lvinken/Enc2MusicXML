@@ -2,7 +2,7 @@
 Magio      : SCOW
 Chu_magio  :   c4
 Chu_versio :  420
-Nekonata1  :   19
+Nekonata1  :   18
 Fiksa1     :   f0
 N sistemoj :    2
 N paghoj   :    1
@@ -57,20 +57,16 @@ N mezuroj  :    6
 
 ---- MEZUROJ ----
 ---> Mezuro 1
-	Grando    : 202 B
+	Grando    : 76 B
 	Rapido    : 100 FPM
 	Takto     : 4/4
 	Stangoj   : ||
 	Ripetsalto: 0x0
 	Saltsigno : \mark "¿saltsigno?"
  Objektoj (en liniaroj):
- f8-.-> [13] (vocho: 0)
- b'8-. [13] (vocho: 0)
- b'8---^ [37] (vocho: 0)
- b'8---> [62] (vocho: 0)
- b'8\fermata [86] (vocho: 0)
- Vostligo [255] (vocho: 0)
- Vostligo [255] (vocho: 0)
+ r4 [0] (vocho: 0)
+ c'64 [0] (vocho: 0)
+ e'4 [0] (vocho: 0)
 --------------
 ---> Mezuro 2
 	Grando    : 2 B
@@ -82,14 +78,13 @@ N mezuroj  :    6
  Objektoj (en liniaroj):
 --------------
 ---> Mezuro 3
-	Grando    : 18 B
+	Grando    : 2 B
 	Rapido    : 100 FPM
 	Takto     : 4/4
 	Stangoj   : ||
 	Ripetsalto: 0x0
 	Saltsigno : \mark "¿saltsigno?"
  Objektoj (en liniaroj):
- ->-. [0;132 -> 0;0] (vocho: 0)
 --------------
 ---> Mezuro 4
 	Grando    : 2 B
@@ -113,7 +108,7 @@ N mezuroj  :    6
 	Grando    : 2 B
 	Rapido    : 100 FPM
 	Takto     : 4/4
-	Stangoj   : |\bar "|."
+	Stangoj   : ||
 	Ripetsalto: 0x0
 	Saltsigno : \mark "¿saltsigno?"
  Objektoj (en liniaroj):

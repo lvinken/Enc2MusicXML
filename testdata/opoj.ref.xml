@@ -68,9 +68,6 @@
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -84,6 +81,7 @@
           <normal-notes>2</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -110,9 +108,6 @@
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -126,20 +121,18 @@
           <normal-notes>2</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
       <note>
         <rest/>
-        <duration>80</duration>
+        <duration>120</duration>
         <type>eighth</type>
         <time-modification>
           <actual-notes>3</actual-notes>
           <normal-notes>2</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -153,20 +146,14 @@
           <normal-notes>2</normal-notes>
         </time-modification>
         <notations>
-          <tuplet type="start"/>
+          <tuplet type="stop"/>
         </notations>
       </note>
       <note>
         <rest/>
-        <duration>160</duration>
-        <type>quarter</type>
-        <time-modification>
-          <actual-notes>3</actual-notes>
-          <normal-notes>2</normal-notes>
-        </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
+        <duration>120</duration>
+        <type>eighth</type>
+        <voice>1</voice>
       </note>
     </measure>
     <measure number="2">
@@ -244,9 +231,6 @@
           <actual-notes>6</actual-notes>
           <normal-notes>4</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -260,6 +244,7 @@
           <normal-notes>4</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -322,9 +307,6 @@
           <actual-notes>6</actual-notes>
           <normal-notes>4</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -338,6 +320,7 @@
           <normal-notes>4</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>
@@ -376,9 +359,6 @@
           <actual-notes>5</actual-notes>
           <normal-notes>4</normal-notes>
         </time-modification>
-        <notations>
-          <tuplet type="stop"/>
-        </notations>
       </note>
       <note>
         <pitch>
@@ -392,6 +372,7 @@
           <normal-notes>4</normal-notes>
         </time-modification>
         <notations>
+          <tuplet type="stop"/>
           <tuplet type="start"/>
         </notations>
       </note>

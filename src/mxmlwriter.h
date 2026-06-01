@@ -51,6 +51,7 @@ public:
     void writeElementEnd();
     void writeEnd();
     void writeFermata();
+    void writeGapRest(const int duration, const int voice, const int staff);
     void writeGrace(const GraceType type);
     void writeIdentification(const QString& author, const QString& lyricist, const QString& rights, const QString& software);
     void writeKey(const int fifths);
@@ -59,13 +60,14 @@ public:
     void writePitch(const char step, const int alter, const int octave);
     void writeRepeatLeft(const bool coda, const bool segno);
     void writeRepeatRight(const QString& words);
-    void writeScorePart(const int n, const QString& instr);
+    void writeScorePart(const int n, const QString& instr, const int midiProgram = 0);
     void writeSlur(const StartStop startstop, const int number = 1);
     void writeStaff(const int nstaves, const int staff);
     void writeStaves(const int nstaves);
     void writeTie(const StartStop startstop);
     void writeTied(const StartStop startstop);
     void writeTime(const unsigned int beats, const unsigned int beattype);
+    void writeTimeChange(const unsigned int beats, const unsigned int beattype);
     void writeTimeModification(const int actual, const int normal);
     void writeTuplet(TupletState state);
     void writeVoice(const bool hasMultipleVoices, const int voice);

@@ -55,7 +55,8 @@ enum class TupletState : char {
     NONE,
     START,
     MID,
-    STOP
+    STOP,
+    STOPSTART  // stop previous group and start new one
 };
 
 
