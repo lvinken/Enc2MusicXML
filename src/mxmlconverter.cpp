@@ -370,8 +370,8 @@ void MxmlConverter::initVoicesPerPart()
 // MxmlFile - MusicXML converter constructor
 //---------------------------------------------------------
 
-MxmlConverter::MxmlConverter(const EncFile& ef)
-    : m_ef(ef), m_nc(ef)
+MxmlConverter::MxmlConverter(const EncFile& ef, QIODevice* device)
+    : m_device(device), m_ef(ef), m_nc(ef)
 {
     initVoicesPerPart();
 }
@@ -415,9 +415,7 @@ bool MxmlConverter::isHidden(const int partNr) const
 void MxmlConverter::convertEncToMxml()
 {
     qDebug() << "MxmlConverter::convertEncToMxml()";
-    QFile outFile;
-    outFile.open(stdout, QFile::WriteOnly);
-    m_writer.setDevice(&outFile);
+    m_writer.setDevice(m_device);
     m_writer.writeBegin();
     m_writer.writeElementStart("score-partwise");
     work();

@@ -80,7 +80,11 @@ int main(int argc, char *argv[])
          QCoreApplication::translate("main", "Convert file(s) to MusicXML format.")},
         });
     clp.process(app);
-    if (clp.isSet("h") || (!clp.isSet("a") && !clp.isSet("d") && !clp.isSet("m"))) {
+    if (clp.isSet("h")
+        || (clp.isSet("a") && clp.positionalArguments().count() < 1)
+        || (clp.isSet("d") && clp.positionalArguments().count() < 1)
+        || (clp.isSet("m") && clp.positionalArguments().count() < 1)
+        || (!clp.isSet("a") && !clp.isSet("d") && !clp.isSet("m") && clp.positionalArguments().count() != 0)) {
         clp.showHelp();
         Q_UNREACHABLE();
     }
@@ -92,7 +96,7 @@ int main(int argc, char *argv[])
             af.write();
         }
     }
-    if (clp.isSet("d")) {
+    else if (clp.isSet("d")) {
         for (const auto& s : clp.positionalArguments()) {
             EncFile ef;
             read_file(s, ef);
@@ -100,13 +104,18 @@ int main(int argc, char *argv[])
             tf.write();
         }
     }
-    if (clp.isSet("m")) {
+    else if (clp.isSet("m")) {
         for (const auto& s : clp.positionalArguments()) {
             EncFile ef;
             read_file(s, ef);
-            MxmlConverter mf(ef);
+            QFile outFile;
+            outFile.open(stdout, QFile::WriteOnly);
+            MxmlConverter mf(ef, &outFile);
             mf.convertEncToMxml();
         }
+    }
+    else {
+        qDebug() << "main() use GUI (TODO)";
     }
 
     return 0;

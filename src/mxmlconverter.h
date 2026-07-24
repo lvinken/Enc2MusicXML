@@ -50,7 +50,7 @@ private:
 class MxmlConverter
 {
 public:
-    MxmlConverter(const EncFile& ef);
+    MxmlConverter(const EncFile& ef, QIODevice* device);
     void convertEncToMxml();
 private:
     bool hasMultipleVoices(const int partNr) const { return (partNr < static_cast<int>(m_voicesPerPart.size())) && (m_voicesPerPart.at(partNr) > 1); }
@@ -75,6 +75,7 @@ private:
     void scorePart(const int n, const EncInstrument& instr);
     void time();
     void work();
+    QIODevice* m_device;
     const EncFile& m_ef;
     const NoteConnector m_nc;
     MxmlWriter m_writer;
