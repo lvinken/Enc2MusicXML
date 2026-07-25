@@ -72,13 +72,13 @@ int main(int argc, char *argv[])
     clp.addHelpOption();
     clp.addVersionOption();
     clp.addOptions({
-                       {{"a", "analyse"},
-                        QCoreApplication::translate("main", "Analyse file(s).")},
-                       {{"d", "dump"},
-                        QCoreApplication::translate("main", "Dump file(s). Similar to enc2ly's --dump option.")},
-                       {{"m", "convert-to-MusicXML"},
-                        QCoreApplication::translate("main", "Convert file(s) to MusicXML format.")},
-                   });
+        {{"a", "analyse"},
+         QCoreApplication::translate("main", "Analyse file(s).")},
+        {{"d", "dump"},
+         QCoreApplication::translate("main", "Dump file(s). Similar to enc2ly's --dump option.")},
+        {{"m", "convert-to-MusicXML"},
+         QCoreApplication::translate("main", "Convert file(s) to MusicXML format.")},
+        });
     clp.process(app);
     if (clp.isSet("h") || (!clp.isSet("a") && !clp.isSet("d") && !clp.isSet("m"))) {
         clp.showHelp();

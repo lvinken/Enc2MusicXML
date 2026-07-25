@@ -217,21 +217,21 @@ static bool encClef2xml(const clefType ct, QString& sign, int& line, int& octCh)
     default:
         res = false;
         qDebug()
-                << "encClef2xml: clef type"
-                << static_cast<int>(ct)
-                << "not supported"
-                   ;
+            << "encClef2xml: clef type"
+            << static_cast<int>(ct)
+            << "not supported"
+            ;
         break;
     }
 
     qDebug()
-            << "xxx_encClef2xml"
-            << "clef type" << static_cast<int>(ct)
-            << "res" << res
-            << "sign" << sign
-            << "line" << line
-            << "octCh" << octCh
-               ;
+        << "xxx_encClef2xml"
+        << "clef type" << static_cast<int>(ct)
+        << "res" << res
+        << "sign" << sign
+        << "line" << line
+        << "octCh" << octCh
+        ;
 
     return res;
 }
@@ -356,10 +356,10 @@ void MxmlConverter::initVoicesPerPart()
     for (size_t i = 0; i < m_ef.staves().size(); ++i) {
         m_voicesPerPart.push_back(nrOfVoicesInPart(m_ef, count, 1));
         qDebug()
-                << "initVoicesPerPart"
-                << "part" << count + 1
-                << "voices" << m_voicesPerPart.at(count)
-                   ;
+            << "initVoicesPerPart"
+            << "part" << count + 1
+            << "voices" << m_voicesPerPart.at(count)
+            ;
         ++count;
     }
 
@@ -614,10 +614,10 @@ void MxmlConverter::identification()
 int encKeyToFifths(unsigned int key)
 {
     std::vector<int> v =
-    {
-        //   c   f  bf  ef  af  df  gf  cf  g   d   a   e   b  fs  cs
-        /**/ 0, -1, -2, -3, -4, -5, -6, -7, 1,  2,  3,  4,  5,  6,  7
-    };
+        {
+            //   c   f  bf  ef  af  df  gf  cf  g   d   a   e   b  fs  cs
+            /**/ 0, -1, -2, -3, -4, -5, -6, -7, 1,  2,  3,  4,  5,  6,  7
+        };
     if (key >= v.size()) {
         qDebug() << "encKeyToFifths: key out of range:" << key;
         return 0;
@@ -670,10 +670,10 @@ void MxmlConverter::keyChange(const EncMeasureElemKeyChange* keyCh)
     const auto fifths = encKeyToFifths(kcType);
     m_writer.writeKeyChange(fifths);
     qDebug()
-            << "writeKeyChange"
-            << "kcType" << kcType
-            << "fifths" << fifths
-               ;
+        << "writeKeyChange"
+        << "kcType" << kcType
+        << "fifths" << fifths
+        ;
 }
 
 
@@ -834,7 +834,7 @@ static void dump_note_timing_measure_elem(const EncMeasureElem* const elem, cons
                  << (note->m_grace2 & 0x05)
                  << "pbdur" << note->m_playbackDurTicks
                  << "nexttick" << (note->m_tick + durationNote(note))
-                    ;
+            ;
     }
     else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
         qDebug() << id
@@ -847,7 +847,7 @@ static void dump_note_timing_measure_elem(const EncMeasureElem* const elem, cons
                  << "dots" << (rest->m_dotControl & 3)
                  << "calcdur" << durationRest(rest)
                  << "nexttick" << (rest->m_tick + durationRest(rest))
-                    ;
+            ;
     }
 }
 
@@ -947,7 +947,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
     qDebug() << "xxx_note_timing"
              << "measureNr" << measureNr
-                ;
+        ;
     dump_note_timing_measure_elems(m, "xxx_note_timing");
 
     std::set<quint8> voices;
@@ -958,11 +958,11 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
     qDebug() << "xxx_voice_timing"
              << "measureNr" << measureNr
-                ;
+        ;
     for (const auto v : voices) {
         qDebug() << "xxx_voice_timing"
                  << "voice" << v
-                    ;
+            ;
         for (const auto& elem : m.measureElems()) {
             if (elem->m_staffIdx == partNr && elem->m_voice == v) {
                 dump_note_timing_measure_elem(elem, "xxx_voice_timing");
@@ -1003,7 +1003,7 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
              << "measureNr" << measureNr
              << "m_coda" << m.m_coda
              << "m.repeat()" << static_cast<unsigned int>(m.repeat())
-                ;
+        ;
 
     if (partNr == 0) {
         // write repeat only for first staff
@@ -1185,8 +1185,8 @@ void MxmlConverter::measure(const int partNr, const size_t measureNr)
 
                 const auto direction = m_nc.direction(curnote);
                 if (direction
-                        && direction->type() == ornamentType::STAFFTEXT
-                        && direction->m_tind < m_ef.text().m_texts.size()) {
+                    && direction->type() == ornamentType::STAFFTEXT
+                    && direction->m_tind < m_ef.text().m_texts.size()) {
                     m_writer.writeWords(m_ef.text().m_texts.at(direction->m_tind));
                 }
                 else if (direction
