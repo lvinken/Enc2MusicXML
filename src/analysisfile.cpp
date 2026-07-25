@@ -238,20 +238,20 @@ void AnalysisFile::writeHeader()
 {
     const EncHeader& hdr = m_ef.header();
     std::cout
-            << "---- HEADER ----" << "\n"
-            << std::hex
-            << "File magic:\t" << qPrintable(hdr.m_magic) << "\n"
-            << "File format:\t" << std::setw(4) << static_cast<unsigned int>(hdr.m_chuMagio) << "\n"
-            << "File version:\t" << std::setw(4) << hdr.m_chuVersio << "\n"
-            << "Unknown1:\t" << std::setw(4) << hdr.m_nekon1 << "\n"
-            << "Unknown2:\t" << std::setw(4) << hdr.m_fiksa1 << "\n"
-            << std::dec
-            << "N systems:\t" << std::setw(4) << hdr.m_lineCount << "\n"
-            << "N pages:\t" << std::setw(4) << hdr.m_pageCount << "\n"
-            << "N instruments:\t" << std::setw(4) << static_cast<int>(hdr.m_instrumentCount) << "\n"
-            << "N staves:\t" << std::setw(4) << static_cast<int>(hdr.m_staffPerSystem) << "\n"
-            << "N measures:\t" << std::setw(4) << hdr.m_measureCount << "\n"
-            << "\n";
+        << "---- HEADER ----" << "\n"
+        << std::hex
+        << "File magic:\t" << qPrintable(hdr.m_magic) << "\n"
+        << "File format:\t" << std::setw(4) << static_cast<unsigned int>(hdr.m_chuMagio) << "\n"
+        << "File version:\t" << std::setw(4) << hdr.m_chuVersio << "\n"
+        << "Unknown1:\t" << std::setw(4) << hdr.m_nekon1 << "\n"
+        << "Unknown2:\t" << std::setw(4) << hdr.m_fiksa1 << "\n"
+        << std::dec
+        << "N systems:\t" << std::setw(4) << hdr.m_lineCount << "\n"
+        << "N pages:\t" << std::setw(4) << hdr.m_pageCount << "\n"
+        << "N instruments:\t" << std::setw(4) << static_cast<int>(hdr.m_instrumentCount) << "\n"
+        << "N staves:\t" << std::setw(4) << static_cast<int>(hdr.m_staffPerSystem) << "\n"
+        << "N measures:\t" << std::setw(4) << hdr.m_measureCount << "\n"
+        << "\n";
 }
 
 
@@ -259,9 +259,9 @@ void AnalysisFile::writeTitle()
 {
     const EncTitle& ttl = m_ef.title();
     std::cout
-            << "---- TITLES ----" << "\n"
-            << "Size:\t\t" << ttl.m_varsize << " bytes" << "\n"
-            << "Title:\t\t" << qPrintable(ttl.m_title) << "\n";
+        << "---- TITLES ----" << "\n"
+        << "Size:\t\t" << ttl.m_varsize << " bytes" << "\n"
+        << "Title:\t\t" << qPrintable(ttl.m_title) << "\n";
     for (int i = 0; i < 2 && ttl.m_subtitle.size(); ++i)
         std::cout << "Subtitle " << i + 1 << ":\t" << qPrintable(ttl.m_subtitle.at(i)) << "\n";
     for (int i = 0; i < 3 && ttl.m_instruction.size(); ++i)
@@ -275,7 +275,7 @@ void AnalysisFile::writeTitle()
     for (int i = 0; i < 6 && ttl.m_copyright.size(); ++i)
         std::cout << "Copyright " << i + 1 << ":\t" << qPrintable(ttl.m_copyright.at(i)) << "\n";
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
@@ -283,45 +283,45 @@ void AnalysisFile::writeText()
 {
     const EncText& txt = m_ef.text();
     std::cout
-            << "---- TEXTS ----" << "\n"
-            << "N texts:\t" << txt.m_texts.size() << "\n";
+        << "---- TEXTS ----" << "\n"
+        << "N texts:\t" << txt.m_texts.size() << "\n";
     for (unsigned int i = 0; i < txt.m_texts.size(); ++i)
         std::cout << "Text " << i + 1 << ":\t\t" << qPrintable(txt.m_texts.at(i)) << "\n";
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
 void AnalysisFile::writeInstruments()
 {
     std::cout
-            << "---- INSTRUMENTS ----" << "\n";
+        << "---- INSTRUMENTS ----" << "\n";
     int count = 0;
     for (const auto& s : m_ef.staves()) {
         ++count;
         std::cout
-                << std::setw(2) << std::setfill('0') << count << ":\t\t" << qPrintable(s.m_name) << "\n";
+            << std::setw(2) << std::setfill('0') << count << ":\t\t" << qPrintable(s.m_name) << "\n";
     }
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
 void AnalysisFile::writeLines()
 {
     std::cout
-            << "---- SYSTEMS ----" << "\n";
+        << "---- SYSTEMS ----" << "\n";
     int count = 0;
     for (const auto& l : m_ef.lines()) {
         ++count;
         std::cout
-                << "--- System " << std::setw(2) << std::setfill('0') << count << "\n"
-                << "type:\t\t0x" << std::hex << std::setw(2) << (l.m_offset & 0xFF) << "\n"
-                << "measures:\t" << std::dec << static_cast<int>(l.m_measureCount) << "\n"
-                   ;
+            << "--- System " << std::setw(2) << std::setfill('0') << count << "\n"
+            << "type:\t\t0x" << std::hex << std::setw(2) << (l.m_offset & 0xFF) << "\n"
+            << "measures:\t" << std::dec << static_cast<int>(l.m_measureCount) << "\n"
+            ;
         writeLineStaffData(l);
         std::cout
-                << "\n";
+            << "\n";
     }
 }
 
@@ -330,14 +330,14 @@ void AnalysisFile::writeLineStaffData(const EncLine& line)
 {
     int count = 0;
     std::cout
-            << "Staff\ttype\tclef\tkey" << "\n";
+        << "Staff\ttype\tclef\tkey" << "\n";
     for (const auto& d : line.lineStaffData()) {
         std::cout
-                << count + 1
-                << "\t" << stafftype2string(/* TODO */ static_cast<quint8>(d.m_staffType))
-                << "\t" << cleftype2string(/* TODO */ static_cast<qint8>(d.m_clef))
-                << "\t" << keytype2string(d.m_key) << "\n"
-                   ;
+            << count + 1
+            << "\t" << stafftype2string(/* TODO */ static_cast<quint8>(d.m_staffType))
+            << "\t" << cleftype2string(/* TODO */ static_cast<qint8>(d.m_clef))
+            << "\t" << keytype2string(d.m_key) << "\n"
+            ;
         ++count;
     }
 }
@@ -346,21 +346,21 @@ void AnalysisFile::writeLineStaffData(const EncLine& line)
 void AnalysisFile::writeMeasures()
 {
     std::cout
-            << "---- MEASURES ----" << "\n";
+        << "---- MEASURES ----" << "\n";
     int count = 0;
     for (const auto& m : m_ef.measures()) {
         ++count;
         std::cout
-                << "--- Measure "   << count << "\n"
-                << "size:\t\t" << m.m_varsize << " bytes" << "\n"
-                << "tempo:\t\t" << m.m_bpm << " BPM" << "\n"
-                << "time signature:\t" << static_cast<int>(m.m_timeSigNum) << "/" << static_cast<int>(m.m_timeSigDen) << "\n"
-                   //<< "\tStangoj   : " << enc_lily_stango(m.m_barTypeStart) << enc_lily_stango(m.m_barTypeEnd) << "\n"
-                   //<< "\tRipetsalto: 0x" << std::hex << static_cast<int>(m.m_repeatAlternative) << std::dec << "\n"
-                   //<< "\tSaltsigno : " << enc_lily_saltsigno((m.m_coda >> 8) & 0xFF) << "\n"
-                << "--- Elements (in file order):"<< "\n"
-                << "xoffs\ttick\tvoice\tstaff\tmdelta\txoffs2\ttype" << "\n"
-                   ;
+            << "--- Measure "   << count << "\n"
+            << "size:\t\t" << m.m_varsize << " bytes" << "\n"
+            << "tempo:\t\t" << m.m_bpm << " BPM" << "\n"
+            << "time signature:\t" << static_cast<int>(m.m_timeSigNum) << "/" << static_cast<int>(m.m_timeSigDen) << "\n"
+            //<< "\tStangoj   : " << enc_lily_stango(m.m_barTypeStart) << enc_lily_stango(m.m_barTypeEnd) << "\n"
+            //<< "\tRipetsalto: 0x" << std::hex << static_cast<int>(m.m_repeatAlternative) << std::dec << "\n"
+            //<< "\tSaltsigno : " << enc_lily_saltsigno((m.m_coda >> 8) & 0xFF) << "\n"
+            << "--- Elements (in file order):"<< "\n"
+            << "xoffs\ttick\tvoice\tstaff\tmdelta\txoffs2\ttype" << "\n"
+            ;
 
 #if 0
         for (int i = 0; i < m_ef.header().m_staffPerSystem; ++i) {
@@ -396,11 +396,11 @@ void AnalysisFile::writeMeasures()
 void AnalysisFile::writeMeasureElem(const EncMeasureElem* const elem)
 {
     std::cout
-            << static_cast<int>(elem->m_xoffset)
-            << "\t" << elem->m_tick
-            << "\t" << static_cast<int>(elem->m_voice)
-            << "\t" << static_cast<int>(elem->m_staffIdx)
-               ;
+        << static_cast<int>(elem->m_xoffset)
+        << "\t" << elem->m_tick
+        << "\t" << static_cast<int>(elem->m_voice)
+        << "\t" << static_cast<int>(elem->m_staffIdx)
+        ;
 
     if (const EncMeasureElemNote* const note = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
         //qDebug() << "successfully converted to note:" << elem;
@@ -419,82 +419,82 @@ void AnalysisFile::writeMeasureElem(const EncMeasureElem* const elem)
         else if (note->m_dotControl & 0x40)
             adorno = note->articulationDown();
         std::cout
-                << "\t"
-                << "-\t-\t"
-                   //<< (isPercClef ? enc_lily_vpoz_frape (note->m_position)
-                   //               : (isRhythmStaff ? "c" : qPrintable(semiTonePitch2Lily(note->m_semiTonePitch))))
-                << step << (alter ? "#" : "") << octave
-                << faceValue2string(note->m_faceValue & 0x0F)
-                << dots2string(note->m_dotControl & 3)
-                << tuplet2string(note->m_tuplet)
-                << ((note->m_grace1 & 0x30) > 0x10 ? " grace" : "")
-                   //<< enc_lily_adorno(adorno)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            //<< (isPercClef ? enc_lily_vpoz_frape (note->m_position)
+            //               : (isRhythmStaff ? "c" : qPrintable(semiTonePitch2Lily(note->m_semiTonePitch))))
+            << step << (alter ? "#" : "") << octave
+            << faceValue2string(note->m_faceValue & 0x0F)
+            << dots2string(note->m_dotControl & 3)
+            << tuplet2string(note->m_tuplet)
+            << ((note->m_grace1 & 0x30) > 0x10 ? " grace" : "")
+            //<< enc_lily_adorno(adorno)
+            << "\n";
     }
     else if (const EncMeasureElemClef* const clef = dynamic_cast<const EncMeasureElemClef* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << clef2string(clef)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << clef2string(clef)
+            << "\n";
     }
     else if (const EncMeasureElemOrnament* const orna = dynamic_cast<const EncMeasureElemOrnament* const>(elem)) {
         std::cout
-                << "\t" << static_cast<int>(orna->m_al_mezuro)
-                << "\t" << static_cast<int>(orna->m_xoffset2)
-                << "\t"
-                << ornament2string(orna->type(), orna->m_speguleco)
-                << "\n";
+            << "\t" << static_cast<int>(orna->m_al_mezuro)
+            << "\t" << static_cast<int>(orna->m_xoffset2)
+            << "\t"
+            << ornament2string(orna->type(), orna->m_speguleco)
+            << "\n";
     }
     else if (const EncMeasureElemLyric* const lyric = dynamic_cast<const EncMeasureElemLyric* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << lyric2string(lyric)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << lyric2string(lyric)
+            << "\n";
     }
     else if (const EncMeasureElemTie* const tie = dynamic_cast<const EncMeasureElemTie* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << tie2string(tie)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << tie2string(tie)
+            << "\n";
     }
     else if (const EncMeasureElemBeam* const beam = dynamic_cast<const EncMeasureElemBeam* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << beam2string(beam)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << beam2string(beam)
+            << "\n";
     }
     else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << "R"
-                << faceValue2string(rest->m_faceValue & 0x0F)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << "R"
+            << faceValue2string(rest->m_faceValue & 0x0F)
+            << "\n";
     }
     else if (const EncMeasureElemChord* const chord = dynamic_cast<const EncMeasureElemChord* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << chord2string(chord)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << chord2string(chord)
+            << "\n";
     }
     else if (const EncMeasureElemKeyChange* const key = dynamic_cast<const EncMeasureElemKeyChange* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << key2string(key)
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << key2string(key)
+            << "\n";
     }
     else if (const EncMeasureElemUnknown* const unknown = dynamic_cast<const EncMeasureElemUnknown* const>(elem)) {
         std::cout
-                << "\t"
-                << "-\t-\t"
-                << "Unknown (TODO) " << unknown
-                << "\n";
+            << "\t"
+            << "-\t-\t"
+            << "Unknown (TODO) " << unknown
+            << "\n";
     }
     else
         qDebug() << "failed to convert:" << elem;

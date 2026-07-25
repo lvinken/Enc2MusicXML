@@ -214,7 +214,7 @@ const EncMeasureElemNote* NoteConnector::findLastNote(const EncMeasureElemNote* 
     for (const auto elem : m.measureElems()) {
         if (const EncMeasureElemNote* const prev = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
             if (prev->m_voice == note->m_voice
-                    && prev->m_staffIdx == note->m_staffIdx) {
+                && prev->m_staffIdx == note->m_staffIdx) {
                 previousNote = prev;
             }
         }
@@ -267,8 +267,8 @@ const EncMeasureElemNote* NoteConnector::findPreviousNote(const EncMeasureElemNo
         for (const auto elem : m.measureElems()) {
             if (const EncMeasureElemNote* const prev = dynamic_cast<const EncMeasureElemNote* const>(elem)) {
                 if (prev->m_tick < note->m_tick
-                        && prev->m_voice == note->m_voice
-                        && prev->m_staffIdx == note->m_staffIdx) {
+                    && prev->m_voice == note->m_voice
+                    && prev->m_staffIdx == note->m_staffIdx) {
                     previousNote = prev;
                 }
             }
@@ -301,10 +301,10 @@ const EncMeasureElemOrnament* NoteConnector::direction(const EncMeasureElemNote*
     for (const auto elem : m.measureElems()) {
         if (const EncMeasureElemOrnament* const orn = dynamic_cast<const EncMeasureElemOrnament* const>(elem)) {
             if (note->m_tick == orn->m_tick
-                    && note->m_voice == orn->m_voice
-                    && note->m_staffIdx == orn->m_staffIdx
-                    && (orn->type() == ornamentType::STAFFTEXT
-                        || orn->type() == ornamentType::TEMPO)) {
+                && note->m_voice == orn->m_voice
+                && note->m_staffIdx == orn->m_staffIdx
+                && (orn->type() == ornamentType::STAFFTEXT
+                    || orn->type() == ornamentType::TEMPO)) {
                 return orn;
             }
         }
@@ -377,8 +377,8 @@ bool NoteConnector::tieStart(const EncMeasureElemNote* const note) const
             // of timing drift between the TIE element and the note (live recording).
             const int dt = static_cast<int>(note->m_tick) - static_cast<int>(tie->m_tick);
             if (note->m_voice == tie->m_voice
-                    && note->m_staffIdx == tie->m_staffIdx
-                    && dt >= 0 && dt < CHORD_CLUSTER_THRESHOLD) {
+                && note->m_staffIdx == tie->m_staffIdx
+                && dt >= 0 && dt < CHORD_CLUSTER_THRESHOLD) {
                 return true;
             }
         }

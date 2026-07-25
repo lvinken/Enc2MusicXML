@@ -300,7 +300,7 @@ void MxmlWriter::writeGapRest(const int duration, const int voice, const int sta
     m_xml.writeTextElement("duration", QString::number(duration));
     m_xml.writeTextElement("type", type);
     if (duration == 720 || duration == 360 || duration == 180
-            || duration == 90 || duration == 45) {
+        || duration == 90 || duration == 45) {
         m_xml.writeEmptyElement("dot");
     }
     m_xml.writeTextElement("voice", QString::number(voice + 1));

@@ -53,8 +53,8 @@ static bool readMagic(QDataStream& data, QString& magic)
         magic.append(QChar(ch));
     }
     qDebug()
-            << "filepos" << hexString(data.device()->pos() - 4)
-            << "magic" << magic;
+        << "filepos" << hexString(data.device()->pos() - 4)
+        << "magic" << magic;
     return true;
 }
 
@@ -87,7 +87,7 @@ static bool isKnownMagic(const QString& magic)
         return false;
 
     return  magic == "LINE" || magic == "MEAS" || magic == "TITL" || magic == "TEXT"
-            || isEncInstrumentMagic(magic);
+           || isEncInstrumentMagic(magic);
 }
 
 
@@ -117,8 +117,8 @@ static QString findNextKnownMagic(QDataStream& data)
         magic = "";
 
     qDebug()
-            << "filepos" << hexString(data.device()->pos() - 4)
-            << "magic" << magic;
+        << "filepos" << hexString(data.device()->pos() - 4)
+        << "magic" << magic;
 
     return magic;
 }
@@ -166,17 +166,17 @@ bool EncHeader::read(QDataStream& data)
 QDebug operator<<(QDebug dbg, const EncHeader& header)
 {
     dbg
-            << "m_magic" << header.m_magic
-            << "m_chuMagio" << header.m_chuMagio
-            << "m_chuVersio" << header.m_chuVersio
-            << "m_nekon1" << header.m_nekon1
-            << "m_fiksa1" << header.m_fiksa1
-            << "m_lineCount" << header.m_lineCount
-            << "m_pageCount" << header.m_pageCount
-            << "m_instrumentCount" << header.m_instrumentCount
-            << "m_staffPerSystem" << header.m_staffPerSystem
-            << "m_measureCount" << header.m_measureCount
-               ;
+        << "m_magic" << header.m_magic
+        << "m_chuMagio" << header.m_chuMagio
+        << "m_chuVersio" << header.m_chuVersio
+        << "m_nekon1" << header.m_nekon1
+        << "m_fiksa1" << header.m_fiksa1
+        << "m_lineCount" << header.m_lineCount
+        << "m_pageCount" << header.m_pageCount
+        << "m_instrumentCount" << header.m_instrumentCount
+        << "m_staffPerSystem" << header.m_staffPerSystem
+        << "m_measureCount" << header.m_measureCount
+        ;
     return dbg;
 }
 
@@ -211,9 +211,9 @@ bool EncInstrument::read(QDataStream& data, const quint32 var_size, bool probeEn
     }
 
     qDebug()
-            << "m_offset" << m_offset
-            << "charSize" << static_cast<int>(cs)
-               ;
+        << "m_offset" << m_offset
+        << "charSize" << static_cast<int>(cs)
+        ;
 
     int nread = 8; // # bytes read so far
     QChar ch;
@@ -275,9 +275,9 @@ bool EncPage::read(QDataStream& data)
     readMagic(data, m_id);
     data >> m_offset;
     qDebug()
-            << "m_id" << m_id
-            << "m_offset" << m_offset
-               ;
+        << "m_id" << m_id
+        << "m_offset" << m_offset
+        ;
     data.skipRawData(34 - 8);   // fixed size of 34
     return true;
 }
@@ -315,12 +315,12 @@ bool EncLineStaffData::read(QDataStream& data)
     data >> m_instrStaffIdx;
     data.skipRawData(8);      // skip to end
     qDebug()
-            << "m_clef" << static_cast<int>(m_clef)
-            << "m_key" << m_key
-            << "m_pageIdx" << m_pageIdx
-            << "m_staffType" << static_cast<unsigned int>(m_staffType)
-            << "m_instrStaffIdx" << m_instrStaffIdx
-               ;
+        << "m_clef" << static_cast<int>(m_clef)
+        << "m_key" << m_key
+        << "m_pageIdx" << m_pageIdx
+        << "m_staffType" << static_cast<unsigned int>(m_staffType)
+        << "m_instrStaffIdx" << m_instrStaffIdx
+        ;
     return true;
 }
 
@@ -345,12 +345,12 @@ bool EncLine::read(QDataStream& data, const quint32 var_size, const int staffPer
     data >> m_start;
     data >> m_measureCount; // 21 bytes read so far
     qDebug()
-            << "m_id" << m_id
-            << "m_offset" << m_offset
-            << "staffPerSystem" << staffPerSystem
-            << "m_start" << m_start
-            << "m_measureCount" << m_measureCount
-               ;
+        << "m_id" << m_id
+        << "m_offset" << m_offset
+        << "staffPerSystem" << staffPerSystem
+        << "m_start" << m_start
+        << "m_measureCount" << m_measureCount
+        ;
     for (int i = 0; i < staffPerSystem; ++i) {
         EncLineStaffData lineStaffData;
         lineStaffData.read(data);
@@ -402,20 +402,20 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat,
     data >> m_coda;
 
     qDebug()
-            << "m_id" << m_id
-            << "m_varsize" << m_varsize
-            << "m_bpm" << m_bpm
-            << "m_timeSigGlyph" << m_timeSigGlyph
-            << "m_beatTicks" << m_beatTicks
-            << "m_durTicks" << m_durTicks
-            << "m_timeSigNum" << m_timeSigNum
-            << "m_timeSigDen" << m_timeSigDen
-            << "m_barTypeStart" << m_barTypeStart
-            << "m_barTypeEnd" << m_barTypeEnd
-            << "m_repeatMarker" << m_repeatMarker
-            << "m_repeatAlternative" << m_repeatAlternative
-            << "m_coda" << m_coda
-               ;
+        << "m_id" << m_id
+        << "m_varsize" << m_varsize
+        << "m_bpm" << m_bpm
+        << "m_timeSigGlyph" << m_timeSigGlyph
+        << "m_beatTicks" << m_beatTicks
+        << "m_durTicks" << m_durTicks
+        << "m_timeSigNum" << m_timeSigNum
+        << "m_timeSigDen" << m_timeSigDen
+        << "m_barTypeStart" << m_barTypeStart
+        << "m_barTypeEnd" << m_barTypeEnd
+        << "m_repeatMarker" << m_repeatMarker
+        << "m_repeatAlternative" << m_repeatAlternative
+        << "m_coda" << m_coda
+        ;
 
     // Elements start at different offsets depending on format version:
     // - v0xA6 (very old): offset 0x3E, element spacing = size * 2
@@ -500,9 +500,9 @@ bool EncMeasure::read(QDataStream& data, const quint32 var_size, bool oldFormat,
             quint8 elemSize;
             data >> elemSize;
             qDebug()
-                    << "filepos" << hexString(data.device()->pos() - 1)
-                    << "skipping unsupported elemType" << type
-                    << "size" << elemSize;
+                << "filepos" << hexString(data.device()->pos() - 1)
+                << "skipping unsupported elemType" << type
+                << "size" << elemSize;
             if (elemSize > 3) {
                 data.device()->seek(elemStart + elemSize);
             } else {
@@ -631,12 +631,12 @@ bool EncMeasureElem::read(QDataStream& data)
     m_staffIdx &= 0x3F;
 
     qDebug()
-            << "m_tick" << m_tick
-            << "m_type" << m_type
-            << "m_voice" << m_voice
-            << "m_size" << m_size
-            << "m_staffIdx" << m_staffIdx
-               ;
+        << "m_tick" << m_tick
+        << "m_type" << m_type
+        << "m_voice" << m_voice
+        << "m_size" << m_size
+        << "m_staffIdx" << m_staffIdx
+        ;
 
     return true;
 }
@@ -707,9 +707,9 @@ bool EncMeasureElemKeyChange::read(QDataStream& data)
     m_xoffset = 0;                    // like in enc2ly
 
     qDebug()
-            << "m_tipo" << m_tipo
-            << "m_xoffset" << m_xoffset
-               ;
+        << "m_tipo" << m_tipo
+        << "m_xoffset" << m_xoffset
+        ;
 
     return true;
 }
@@ -748,11 +748,11 @@ bool EncMeasureElemTie::read(QDataStream& data)
     if (toSkip > 0) data.skipRawData(toSkip);   // skip to end
 
     qDebug()
-            << "m_tick" << m_tick
-            << "m_xoffset" << m_xoffset
-            << "m_voice" << m_voice
-            << "m_staffIdx" << m_staffIdx
-               ;
+        << "m_tick" << m_tick
+        << "m_xoffset" << m_xoffset
+        << "m_voice" << m_voice
+        << "m_staffIdx" << m_staffIdx
+        ;
 
     return true;
 }
@@ -779,8 +779,8 @@ bool EncMeasureElemBeam::read(QDataStream& data)
     m_xoffset = 255;                  // faked like in enc2ly
 
     qDebug()
-            << "m_xoffset" << m_xoffset
-               ;
+        << "m_xoffset" << m_xoffset
+        ;
 
     return true;
 }
@@ -826,15 +826,15 @@ bool EncMeasureElemOrnament::read(QDataStream& data)
     if (rem > 0) data.skipRawData(rem);
 
     qDebug()
-            << "m_tipo" << m_tipo
-            << "m_xoffset" << m_xoffset
-            << "m_al_mezuro" << m_al_mezuro
-            << "m_xoffset2" << m_xoffset2
-            << "m_speguleco" << m_speguleco
-            << "m_noto" << m_noto
-            << "m_tempo" << m_tempo
-            << "m_tind" << m_tind
-               ;
+        << "m_tipo" << m_tipo
+        << "m_xoffset" << m_xoffset
+        << "m_al_mezuro" << m_al_mezuro
+        << "m_xoffset2" << m_xoffset2
+        << "m_speguleco" << m_speguleco
+        << "m_noto" << m_noto
+        << "m_tempo" << m_tempo
+        << "m_tind" << m_tind
+        ;
 
     return true;
 }
@@ -912,13 +912,13 @@ bool EncMeasureElemChord::read(QDataStream& data)
     }
 
     qDebug()
-            << "m_toniko" << m_toniko
-            << "m_tipo" << m_tipo
-            << "m_xoffset" << m_xoffset
-            << "m_radiko" << m_radiko
-            << "m_baso" << m_baso
-            << "m_teksto" << m_teksto
-               ;
+        << "m_toniko" << m_toniko
+        << "m_tipo" << m_tipo
+        << "m_xoffset" << m_xoffset
+        << "m_radiko" << m_radiko
+        << "m_baso" << m_baso
+        << "m_teksto" << m_teksto
+        ;
 
     return true;
 }
@@ -975,21 +975,21 @@ bool EncMeasureElemNote::read(QDataStream& data)
     }
 
     qDebug()
-            << "m_faceValue" << m_faceValue
-            << "m_grace1" << m_grace1
-            << "m_grace2" << m_grace2
-            << "m_xoffset" << m_xoffset
-            << "m_position" << m_position
-            << "m_tuplet" << m_tuplet
-            << "m_dotControl" << m_dotControl
-            << "m_semiTonePitch" << m_semiTonePitch
-            << "m_playbackDurTicks" << m_playbackDurTicks
-            << "m_velocity" << m_velocity
-            << "m_options" << m_options
-            << "m_alterationGlyph" << m_alterationGlyph
-            << "m_articulationUp" << m_articulationUp
-            << "m_articulationDown" << m_articulationDown
-               ;
+        << "m_faceValue" << m_faceValue
+        << "m_grace1" << m_grace1
+        << "m_grace2" << m_grace2
+        << "m_xoffset" << m_xoffset
+        << "m_position" << m_position
+        << "m_tuplet" << m_tuplet
+        << "m_dotControl" << m_dotControl
+        << "m_semiTonePitch" << m_semiTonePitch
+        << "m_playbackDurTicks" << m_playbackDurTicks
+        << "m_velocity" << m_velocity
+        << "m_options" << m_options
+        << "m_alterationGlyph" << m_alterationGlyph
+        << "m_articulationUp" << m_articulationUp
+        << "m_articulationDown" << m_articulationDown
+        ;
 
     return true;
 }
@@ -1038,11 +1038,11 @@ bool EncMeasureElemRest::read(QDataStream& data)
     if (toSkip > 0) data.skipRawData(toSkip);     // skip to end
 
     qDebug()
-            << "m_faceValue" << m_faceValue
-            << "m_xoffset" << m_xoffset
-            << "m_tuplet" << m_tuplet
-            << "m_dotControl" << m_dotControl
-               ;
+        << "m_faceValue" << m_faceValue
+        << "m_xoffset" << m_xoffset
+        << "m_tuplet" << m_tuplet
+        << "m_dotControl" << m_dotControl
+        ;
 
     return true;
 }
@@ -1132,9 +1132,9 @@ bool EncText::read(QDataStream& data, const quint32 var_size)
     }
 
     qDebug()
-            << "ntexts" << ntexts
-            << "m_texts" << texts
-               ;
+        << "ntexts" << ntexts
+        << "m_texts" << texts
+        ;
 
     return true;
 }

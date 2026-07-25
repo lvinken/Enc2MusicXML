@@ -35,11 +35,11 @@
 const char * enc_lily_liniaro (quint8 tipo)
 {
     const char *chenoj[] =
-    {
-        "melodio",
-        "tabulaturo",
-        "ritmo"
-    };
+        {
+            "melodio",
+            "tabulaturo",
+            "ritmo"
+        };
     if (tipo < (sizeof(chenoj) / sizeof(chenoj[0])) )
         return (chenoj[tipo]);
     return ("¿liniaro?");
@@ -48,17 +48,17 @@ const char * enc_lily_liniaro (quint8 tipo)
 const char * enc_lily_klefo (quint8 num)
 {
     const char *kch[] =
-    {
-        "treble",
-        "bass",
-        "alto",
-        "tenor",
-        "\"treble^8\"",
-        "\"treble_8\"",
-        "\"bass_8\"",
-        "percussion",
-        "tab"
-    };
+        {
+            "treble",
+            "bass",
+            "alto",
+            "tenor",
+            "\"treble^8\"",
+            "\"treble_8\"",
+            "\"bass_8\"",
+            "percussion",
+            "tab"
+        };
     if (num < (sizeof(kch) / sizeof(kch[0])) )
         return (kch[num]);
     return ("¿klefo?");
@@ -126,19 +126,19 @@ const char * enc_lily_noto (unsigned char noto)
 const char * enc_lily_tonalo (quint8 num)
 {
     const char * tch[11][15] =
-    {
-        /* nederlands */ { "c",  "f",  "bes", "ees", "aes", "des", "ges",  "ces", "g",   "d",  "a",  "e",  "b",  "fis", "cis" },
-        /* catalan    */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fad", "dod" },
-        /* deutsch    */ { "c",  "f",  "b",   "ees", "aes", "des", "ges",  "ces", "g",   "d",  "a",  "e",  "h",  "fis", "cis" },
-        /* english    */ { "c",  "f",  "bf ", "ef",  "af",  "df",  "gf",   "cf",  "g",   "d",  "a",  "e",  "b",  "fs",  "cs"  },
-        /* espanol    */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fas", "dos" },
-        /* italiano   */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fad", "dod" },
-        /* norsk      */ { "c",  "f",  "b",   "eess","aess","dess","gess", "cess","g",   "d",  "a",  "e",  "h",  "fiss","ciss"},
-        /* portugues  */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fas", "dos" },
-        /* suomi      */ { "c",  "f",  "b",   "ees", "aes", "des", "ges",  "ces", "g",   "d",  "a",  "e",  "h",  "fis", "cis" },
-        /* svenska    */ { "c",  "f",  "b",   "eess","aess","dess","gess", "cess","g",   "d",  "a",  "e",  "h",  "fiss","ciss"},
-        /* vlaams     */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fak", "dok" },
-    };
+        {
+          /* nederlands */ { "c",  "f",  "bes", "ees", "aes", "des", "ges",  "ces", "g",   "d",  "a",  "e",  "b",  "fis", "cis" },
+          /* catalan    */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fad", "dod" },
+          /* deutsch    */ { "c",  "f",  "b",   "ees", "aes", "des", "ges",  "ces", "g",   "d",  "a",  "e",  "h",  "fis", "cis" },
+          /* english    */ { "c",  "f",  "bf ", "ef",  "af",  "df",  "gf",   "cf",  "g",   "d",  "a",  "e",  "b",  "fs",  "cs"  },
+          /* espanol    */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fas", "dos" },
+          /* italiano   */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fad", "dod" },
+          /* norsk      */ { "c",  "f",  "b",   "eess","aess","dess","gess", "cess","g",   "d",  "a",  "e",  "h",  "fiss","ciss"},
+          /* portugues  */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fas", "dos" },
+          /* suomi      */ { "c",  "f",  "b",   "ees", "aes", "des", "ges",  "ces", "g",   "d",  "a",  "e",  "h",  "fis", "cis" },
+          /* svenska    */ { "c",  "f",  "b",   "eess","aess","dess","gess", "cess","g",   "d",  "a",  "e",  "h",  "fiss","ciss"},
+          /* vlaams     */ { "do", "fa", "sib", "mib", "lab", "reb", "solb", "dob", "sol", "re", "la", "mi", "si", "fak", "dok" },
+          };
     const int lang = 0;
     return tch[lang][num];
 }
@@ -248,79 +248,79 @@ const char * enc_lily_adorno (const quint8 adorno)
 {
     static char bufro[8];
     const char *adornoj[] =
-    {
-        "^\\markup{\\teeny \\flat}",
-        "^\\markup{\\teeny \\sharp}",
-        "^\\markup{\\teeny \\natural}",
-        ":32",
-        "\\trill",
-        "\\trill^\\markup{\\teeny \\flat}",
-        "\\trill^\\markup{\\teeny \\sharp}",
-        "\\trill^\\markup{\\teeny \\natural}",
-        "\\turn",
-        "\\espressivo",
-        "\\prall",
-        "\\mordent",
-        "\\prallprall",
-        "-1",
-        "-2",
-        "-3",
-        "-4",				/* 0x10 */
-        "-5",
-        "->",
-        "-^",
-        "-.-^",
-        "-.-^",
-        "-.->",
-        "-.->",
-        "\\upbow",
-        "\\downbow",
-        "-^",
-        "-+",
-        "--",
-        "-.",
-        "\\flageolet",
-        "-\\markup {\\teeny \\triangle ##f}",
-        "\\fermata",			/* 0x20 */
-        "\\fermata",
-        "--->",
-        "--->",
-        "-.--",
-        "-.--",
-        "---^",
-        "---^",
-        "\\staccatissimo",
-        "\\staccatissimo",
-        "\\staccatissimo\\acent",
-        "\\staccatissimo\\acent",
-        "\\staccatissimo\\tenuto",
-        "\\staccatissimo\\tenuto",
-        "\\reverseturn",
-        "\\prallmordent",
-        "-\\markup {\\bold +}",		/* 0x30 */
-        "-\\rightHandFinger #1 ",	/* FIXME: mankas meti interne de < > */
-        "-\\rightHandFinger #2 ",
-        "-\\rightHandFinger #3 ",
-        "-\\rightHandFinger #4 ",
-        "-\\rightHandFinger #5 ",
-        "-P",
-        "-H",
-        "-T",
-        "\\1",				/* FIXME: mankas meti interne de < > */
-        "\\2",
-        "\\3",
-        "\\4",
-        "\\5",
-        "\\6",
-        "\\7",
-        "\\8",				/* 0x40 */
-        ":8",
-        ":16",
-        ":64",
-        "\\snappizzicato",
-        "\\snappizzicato",
-        "\\0"
-    };
+        {
+            "^\\markup{\\teeny \\flat}",
+            "^\\markup{\\teeny \\sharp}",
+            "^\\markup{\\teeny \\natural}",
+            ":32",
+            "\\trill",
+            "\\trill^\\markup{\\teeny \\flat}",
+            "\\trill^\\markup{\\teeny \\sharp}",
+            "\\trill^\\markup{\\teeny \\natural}",
+            "\\turn",
+            "\\espressivo",
+            "\\prall",
+            "\\mordent",
+            "\\prallprall",
+            "-1",
+            "-2",
+            "-3",
+            "-4",				/* 0x10 */
+            "-5",
+            "->",
+            "-^",
+            "-.-^",
+            "-.-^",
+            "-.->",
+            "-.->",
+            "\\upbow",
+            "\\downbow",
+            "-^",
+            "-+",
+            "--",
+            "-.",
+            "\\flageolet",
+            "-\\markup {\\teeny \\triangle ##f}",
+            "\\fermata",			/* 0x20 */
+            "\\fermata",
+            "--->",
+            "--->",
+            "-.--",
+            "-.--",
+            "---^",
+            "---^",
+            "\\staccatissimo",
+            "\\staccatissimo",
+            "\\staccatissimo\\acent",
+            "\\staccatissimo\\acent",
+            "\\staccatissimo\\tenuto",
+            "\\staccatissimo\\tenuto",
+            "\\reverseturn",
+            "\\prallmordent",
+            "-\\markup {\\bold +}",		/* 0x30 */
+            "-\\rightHandFinger #1 ",	/* FIXME: mankas meti interne de < > */
+            "-\\rightHandFinger #2 ",
+            "-\\rightHandFinger #3 ",
+            "-\\rightHandFinger #4 ",
+            "-\\rightHandFinger #5 ",
+            "-P",
+            "-H",
+            "-T",
+            "\\1",				/* FIXME: mankas meti interne de < > */
+            "\\2",
+            "\\3",
+            "\\4",
+            "\\5",
+            "\\6",
+            "\\7",
+            "\\8",				/* 0x40 */
+            ":8",
+            ":16",
+            ":64",
+            "\\snappizzicato",
+            "\\snappizzicato",
+            "\\0"
+        };
 
     if (adorno == 0xff)
         return ("");
@@ -577,71 +577,71 @@ const char * enc_lily_akordo (const EncMeasureElemChord* const chord, unsigned c
     static char bufro[64];
     char ero[32];
     const char *tnk[] =
-    {
-        "",
-        "m",
-        "+",
-        "dim",
-        "7",
-        "5",
-        "6",
-        "6/9",
-        "(add2)",
-        "(add9)",
-        "(omit3)",
-        "(omit5)",
-        "maj7",
-        "maj7(b5)",
-        "maj7(6/9)",
-        "maj7(+5)",
-        "",
-        "maj9",
-        "maj9(b5)",
-        "maj9(+5)",
-        "",
-        "maj13",
-        "maj13(b5)",
-        "",
-        "7",
-        "7(b5)",
-        "7(b9)",
-        "7(#9)",
-        "",
-        "",
-        "",
-        "",
-        "9",
-        "9(b5)",
-        "11",
-        "13",
-        "13(b5)",
-        "13(b9)",
-        "13(#9)",
-        "",
-        "+7",
-        "+7(b9)",
-        "+7(#9)",
-        "+9",
-        "sus2",
-        "sus2,sus4",
-        "sus4",
-        "7sus4",
-        "9sus4",
-        "13sus4",
-        "m(add2)",
-        "m(add9)",
-        "m6",
-        "m6/9",
-        "m7",
-        "m(maj7)",
-        "m7(b5)",
-        "m7(add4)",
-        "m7(add11)",
-        "m9",
-        "m(maj9)",
-        "m11",
-        "m13"
-    };
+        {
+            "",
+            "m",
+            "+",
+            "dim",
+            "7",
+            "5",
+            "6",
+            "6/9",
+            "(add2)",
+            "(add9)",
+            "(omit3)",
+            "(omit5)",
+            "maj7",
+            "maj7(b5)",
+            "maj7(6/9)",
+            "maj7(+5)",
+            "",
+            "maj9",
+            "maj9(b5)",
+            "maj9(+5)",
+            "",
+            "maj13",
+            "maj13(b5)",
+            "",
+            "7",
+            "7(b5)",
+            "7(b9)",
+            "7(#9)",
+            "",
+            "",
+            "",
+            "",
+            "9",
+            "9(b5)",
+            "11",
+            "13",
+            "13(b5)",
+            "13(b9)",
+            "13(#9)",
+            "",
+            "+7",
+            "+7(b9)",
+            "+7(#9)",
+            "+9",
+            "sus2",
+            "sus2,sus4",
+            "sus4",
+            "7sus4",
+            "9sus4",
+            "13sus4",
+            "m(add2)",
+            "m(add9)",
+            "m6",
+            "m6/9",
+            "m7",
+            "m(maj7)",
+            "m7(b5)",
+            "m7(add4)",
+            "m7(add11)",
+            "m9",
+            "m(maj9)",
+            "m11",
+            "m13"
+        };
 
     if (chord->m_tipo == 0x11)
     {
@@ -655,8 +655,8 @@ const char * enc_lily_akordo (const EncMeasureElemChord* const chord, unsigned c
     else
     {
         sprintf (bufro, "%s%s",
-                 enc_lily_vpoz (chord->m_radiko & 0x0F),
-                 (chord->m_radiko & 0xF0) == 0 ? "" : ((chord->m_radiko & 0xF0) == 0x10 ? enc_lily_dieso () : enc_lily_bemolo ()));
+                enc_lily_vpoz (chord->m_radiko & 0x0F),
+                (chord->m_radiko & 0xF0) == 0 ? "" : ((chord->m_radiko & 0xF0) == 0x10 ? enc_lily_dieso () : enc_lily_bemolo ()));
         if (strcmp (bufro, "hes") == 0 || strcmp (bufro, "hess") == 0)
             strcpy (bufro, "b");
         if (rapido < 9)
@@ -673,8 +673,8 @@ const char * enc_lily_akordo (const EncMeasureElemChord* const chord, unsigned c
         if (chord->m_tipo & 0x02)
         {
             sprintf (ero, "/%s%s",
-                     enc_lily_vpoz (chord->m_baso & 0x0F),
-                     (chord->m_baso & 0xF0) == 0 ? "" : ((chord->m_baso & 0xF0) == 0x10 ? enc_lily_dieso () : enc_lily_bemolo ()));
+                    enc_lily_vpoz (chord->m_baso & 0x0F),
+                    (chord->m_baso & 0xF0) == 0 ? "" : ((chord->m_baso & 0xF0) == 0x10 ? enc_lily_dieso () : enc_lily_bemolo ()));
             if (strcmp (ero, "/hes") == 0 || strcmp (ero, "/hess") == 0)
                 strcpy (ero, "/b");
             strcat (bufro, ero);
@@ -715,20 +715,20 @@ void TextFile::writeHeader()
 {
     const EncHeader& hdr = m_ef.header();
     std::cout
-            << "---- KAPO ----" << "\n"
-            << std::hex
-            << "Magio      : " << qPrintable(hdr.m_magic) << "\n"
-            << "Chu_magio  : " << std::setw(4) << static_cast<unsigned int>(hdr.m_chuMagio) << "\n"
-            << "Chu_versio : " << std::setw(4) << hdr.m_chuVersio << "\n"
-            << "Nekonata1  : " << std::setw(4) << hdr.m_nekon1 << "\n"
-            << "Fiksa1     : " << std::setw(4) << hdr.m_fiksa1 << "\n"
-            << std::dec
-            << "N sistemoj : " << std::setw(4) << hdr.m_lineCount << "\n"
-            << "N paghoj   : " << std::setw(4) << hdr.m_pageCount << "\n"
-            << "N1 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_instrumentCount) << "\n"
-            << "N2 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_staffPerSystem) << "\n"
-            << "N mezuroj  : " << std::setw(4) << hdr.m_measureCount << "\n"
-            << "\n";
+        << "---- KAPO ----" << "\n"
+        << std::hex
+        << "Magio      : " << qPrintable(hdr.m_magic) << "\n"
+        << "Chu_magio  : " << std::setw(4) << static_cast<unsigned int>(hdr.m_chuMagio) << "\n"
+        << "Chu_versio : " << std::setw(4) << hdr.m_chuVersio << "\n"
+        << "Nekonata1  : " << std::setw(4) << hdr.m_nekon1 << "\n"
+        << "Fiksa1     : " << std::setw(4) << hdr.m_fiksa1 << "\n"
+        << std::dec
+        << "N sistemoj : " << std::setw(4) << hdr.m_lineCount << "\n"
+        << "N paghoj   : " << std::setw(4) << hdr.m_pageCount << "\n"
+        << "N1 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_instrumentCount) << "\n"
+        << "N2 liniaroj: " << std::setw(4) << static_cast<int>(hdr.m_staffPerSystem) << "\n"
+        << "N mezuroj  : " << std::setw(4) << hdr.m_measureCount << "\n"
+        << "\n";
 }
 
 
@@ -736,9 +736,9 @@ void TextFile::writeTitle()
 {
     const EncTitle& ttl = m_ef.title();
     std::cout
-            << "---- TITOLOJ ----" << "\n"
-            << "-->  Grando: " << ttl.m_varsize << " B" << "\n"
-            << "  Titolo      : " << qPrintable(ttl.m_title) << "\n";
+        << "---- TITOLOJ ----" << "\n"
+        << "-->  Grando: " << ttl.m_varsize << " B" << "\n"
+        << "  Titolo      : " << qPrintable(ttl.m_title) << "\n";
     for (int i = 0; i < 2 && ttl.m_subtitle.size(); ++i)
         std::cout << "  Subtitolo " << i <<" : " << qPrintable(ttl.m_subtitle.at(i)) << "\n";
     for (int i = 0; i < 3 && ttl.m_instruction.size(); ++i)
@@ -752,7 +752,7 @@ void TextFile::writeTitle()
     for (int i = 0; i < 6 && ttl.m_copyright.size(); ++i)
         std::cout << "  Kopirajto " << i <<" : " << qPrintable(ttl.m_copyright.at(i)) << "\n";
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
@@ -760,46 +760,46 @@ void TextFile::writeText()
 {
     const EncText& txt = m_ef.text();
     std::cout
-            << "---- TEKSTOJ ----" << "\n"
-            << "  --> Kiom: " << txt.m_texts.size() << "\n";
+        << "---- TEKSTOJ ----" << "\n"
+        << "  --> Kiom: " << txt.m_texts.size() << "\n";
     for (unsigned int i = 0; i < txt.m_texts.size(); ++i)
         std::cout << "  Teksto " << i << " : " << qPrintable(txt.m_texts.at(i)) << "\n";
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
 void TextFile::writeInstruments()
 {
     std::cout
-            << "---- INSTRUMENTOJ ----" << "\n";
+        << "---- INSTRUMENTOJ ----" << "\n";
     int count = 0;
     for (const auto& s : m_ef.staves()) {
         ++count;
         std::cout
-                << "\t" << std::setw(2) << std::setfill('0') << count << ": " << qPrintable(s.m_name) << "\n";
+            << "\t" << std::setw(2) << std::setfill('0') << count << ": " << qPrintable(s.m_name) << "\n";
     }
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
 void TextFile::writeLines()
 {
     std::cout
-            << "---- LINIOJ ----" << "\n";
+        << "---- LINIOJ ----" << "\n";
     int count = 0;
     for (const auto& l : m_ef.lines()) {
         ++count;
         std::cout
-                << "  ---> Linio " << std::setw(2) << std::setfill('0') << count << "\n"
-                << "\tTipo   : 0x" << std::hex << std::setw(2) << (l.m_offset & 0xFF) << "\n"
-                << "\tMezuroj: " << std::dec << static_cast<int>(l.m_measureCount) << "\n"
-                   ;
+            << "  ---> Linio " << std::setw(2) << std::setfill('0') << count << "\n"
+            << "\tTipo   : 0x" << std::hex << std::setw(2) << (l.m_offset & 0xFF) << "\n"
+            << "\tMezuroj: " << std::dec << static_cast<int>(l.m_measureCount) << "\n"
+            ;
         writeLineStaffData(l);
     }
     std::cout
-            << "\n";
+        << "\n";
 }
 
 
@@ -808,11 +808,11 @@ void TextFile::writeLineStaffData(const EncLine& line)
     int count = 0;
     for (const auto& d : line.lineStaffData()) {
         std::cout
-                << "\t---> Liniaro: "  << count << "\n"
-                << "\t\tTipo  : " << enc_lily_liniaro(/* TODO */ static_cast<quint8>(d.m_staffType)) << "\n"
-                << "\t\tKlefo : " << enc_lily_klefo(/* TODO */ static_cast<qint8>(d.m_clef)) << "\n"
-                << "\t\tTonalo: " << enc_lily_tonalo(d.m_key) << "\n"
-                   ;
+            << "\t---> Liniaro: "  << count << "\n"
+            << "\t\tTipo  : " << enc_lily_liniaro(/* TODO */ static_cast<quint8>(d.m_staffType)) << "\n"
+            << "\t\tKlefo : " << enc_lily_klefo(/* TODO */ static_cast<qint8>(d.m_clef)) << "\n"
+            << "\t\tTonalo: " << enc_lily_tonalo(d.m_key) << "\n"
+            ;
         ++count;
     }
 }
@@ -821,20 +821,20 @@ void TextFile::writeLineStaffData(const EncLine& line)
 void TextFile::writeMeasures()
 {
     std::cout
-            << "---- MEZUROJ ----" << "\n";
+        << "---- MEZUROJ ----" << "\n";
     int count = 0;
     for (const auto& m : m_ef.measures()) {
         ++count;
         std::cout
-                << "---> Mezuro "   << count << "\n"
-                << "\tGrando    : " << m.m_varsize << " B" << "\n"
-                << "\tRapido    : " << m.m_bpm << " FPM" << "\n"
-                << "\tTakto     : " << static_cast<int>(m.m_timeSigNum) << "/" << static_cast<int>(m.m_timeSigDen) << "\n"
-                << "\tStangoj   : " << enc_lily_stango(m.m_barTypeStart) << enc_lily_stango(m.m_barTypeEnd) << "\n"
-                << "\tRipetsalto: 0x" << std::hex << static_cast<int>(m.m_repeatAlternative) << std::dec << "\n"
-                << "\tSaltsigno : " << enc_lily_saltsigno((m.m_coda >> 8) & 0xFF) << "\n"
-                << " Objektoj (en liniaroj):"<< "\n"
-                   ;
+            << "---> Mezuro "   << count << "\n"
+            << "\tGrando    : " << m.m_varsize << " B" << "\n"
+            << "\tRapido    : " << m.m_bpm << " FPM" << "\n"
+            << "\tTakto     : " << static_cast<int>(m.m_timeSigNum) << "/" << static_cast<int>(m.m_timeSigDen) << "\n"
+            << "\tStangoj   : " << enc_lily_stango(m.m_barTypeStart) << enc_lily_stango(m.m_barTypeEnd) << "\n"
+            << "\tRipetsalto: 0x" << std::hex << static_cast<int>(m.m_repeatAlternative) << std::dec << "\n"
+            << "\tSaltsigno : " << enc_lily_saltsigno((m.m_coda >> 8) & 0xFF) << "\n"
+            << " Objektoj (en liniaroj):"<< "\n"
+            ;
         for (int i = 0; i < m_ef.header().m_staffPerSystem; ++i) {
             std::multimap<quint8 , const EncMeasureElem* const> mmap;
             for (const auto e : m.measureElems()) {
@@ -864,93 +864,93 @@ void TextFile::writeMeasureElem(const EncMeasureElem* const elem)
         else if (note->m_dotControl & 0x40)
             adorno = note->articulationDown();
         std::cout
-                << " "
-                << (isPercClef ? enc_lily_vpoz_frape (note->m_position)
-                               : (isRhythmStaff ? "c" : qPrintable(semiTonePitch2Lily(note->m_semiTonePitch))))
-                << qPrintable(faceValue2Lily(note->m_faceValue & 0x0F))
-                << ((note->m_grace1 & 0x30) > 0x10 ? "!" : "")
-                << enc_lily_punkto(note->m_dotControl & 3)
-                << enc_lily_opeco(note->m_tuplet)
-                << enc_lily_adorno(static_cast<quint8>(adorno))
-                << " [" << static_cast<int>(note->m_xoffset) << "]"
-                << " (vocho: " << static_cast<int>(note->m_voice) << ")"
-                << "\n";
+            << " "
+            << (isPercClef ? enc_lily_vpoz_frape (note->m_position)
+                           : (isRhythmStaff ? "c" : qPrintable(semiTonePitch2Lily(note->m_semiTonePitch))))
+            << qPrintable(faceValue2Lily(note->m_faceValue & 0x0F))
+            << ((note->m_grace1 & 0x30) > 0x10 ? "!" : "")
+            << enc_lily_punkto(note->m_dotControl & 3)
+            << enc_lily_opeco(note->m_tuplet)
+            << enc_lily_adorno(static_cast<quint8>(adorno))
+            << " [" << static_cast<int>(note->m_xoffset) << "]"
+            << " (vocho: " << static_cast<int>(note->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemClef* const clef = dynamic_cast<const EncMeasureElemClef* const>(elem)) {
         std::cout
-                << " "
-                << "Clef (TODO)"
-                << " (vocho: " << static_cast<int>(clef->m_voice) << ")"
-                << "\n";
+            << " "
+            << "Clef (TODO)"
+            << " (vocho: " << static_cast<int>(clef->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemOrnament* const orna = dynamic_cast<const EncMeasureElemOrnament* const>(elem)) {
         std::cout
-                << " "
-                << enc_lily_simbolo(static_cast<quint8>(orna->type()), orna->m_speguleco)
-                << " [0;" << static_cast<int>(orna->m_xoffset)
-                << " -> " << static_cast<int>(orna->m_al_mezuro)
-                << ";" << static_cast<int>(orna->m_xoffset2)
-                << "]"
-                << " (vocho: " << static_cast<int>(orna->m_voice) << ")"
-                << "\n";
+            << " "
+            << enc_lily_simbolo(static_cast<quint8>(orna->type()), orna->m_speguleco)
+            << " [0;" << static_cast<int>(orna->m_xoffset)
+            << " -> " << static_cast<int>(orna->m_al_mezuro)
+            << ";" << static_cast<int>(orna->m_xoffset2)
+            << "]"
+            << " (vocho: " << static_cast<int>(orna->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemLyric* const lyric = dynamic_cast<const EncMeasureElemLyric* const>(elem)) {
         std::cout
-                << " "
-                << "Lyric (TODO)"
-                << " (vocho: " << static_cast<int>(lyric->m_voice) << ")"
-                << "\n";
+            << " "
+            << "Lyric (TODO)"
+            << " (vocho: " << static_cast<int>(lyric->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemTie* const tie = dynamic_cast<const EncMeasureElemTie* const>(elem)) {
         std::cout
-                << " "
-                << "~"
-                << " [" << static_cast<int>(tie->m_xoffset) << "]"
-                << " (vocho: " << static_cast<int>(tie->m_voice) << ")"
-                << "\n";
+            << " "
+            << "~"
+            << " [" << static_cast<int>(tie->m_xoffset) << "]"
+            << " (vocho: " << static_cast<int>(tie->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemBeam* const beam = dynamic_cast<const EncMeasureElemBeam* const>(elem)) {
         std::cout
-                << " "
-                << "Vostligo"
-                << " [" << static_cast<int>(beam->m_xoffset) << "]"
-                << " (vocho: " << static_cast<int>(beam->m_voice) << ")"
-                << "\n";
+            << " "
+            << "Vostligo"
+            << " [" << static_cast<int>(beam->m_xoffset) << "]"
+            << " (vocho: " << static_cast<int>(beam->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemRest* const rest = dynamic_cast<const EncMeasureElemRest* const>(elem)) {
         std::cout
-                << " "
-                << "r"
-                << qPrintable(faceValue2Lily(rest->m_faceValue & 0x0F))
-                << " [" << static_cast<int>(rest->m_xoffset) << "]"
-                << " (vocho: " << static_cast<int>(rest->m_voice) << ")"
-                << "\n";
+            << " "
+            << "r"
+            << qPrintable(faceValue2Lily(rest->m_faceValue & 0x0F))
+            << " [" << static_cast<int>(rest->m_xoffset) << "]"
+            << " (vocho: " << static_cast<int>(rest->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemChord* const chord = dynamic_cast<const EncMeasureElemChord* const>(elem)) {
         std::cout
-                << " "
-                << "^\""
-                << enc_lily_akordo(chord, -1)
-                << "\""
-                << " [" << static_cast<int>(chord->m_xoffset) << "]"
-                << " (vocho: " << static_cast<int>(chord->m_voice) << ")"
-                << "\n";
+            << " "
+            << "^\""
+            << enc_lily_akordo(chord, -1)
+            << "\""
+            << " [" << static_cast<int>(chord->m_xoffset) << "]"
+            << " (vocho: " << static_cast<int>(chord->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemKeyChange* const key = dynamic_cast<const EncMeasureElemKeyChange* const>(elem)) {
         std::cout
-                << " "
-                << "\\key "
-                << enc_lily_tonalo(key->m_tipo)
-                << " [" << static_cast<int>(key->m_xoffset) << "]"
-                << " (vocho: " << static_cast<int>(key->m_voice) << ")"
-                << "\n";
+            << " "
+            << "\\key "
+            << enc_lily_tonalo(key->m_tipo)
+            << " [" << static_cast<int>(key->m_xoffset) << "]"
+            << " (vocho: " << static_cast<int>(key->m_voice) << ")"
+            << "\n";
     }
     else if (const EncMeasureElemUnknown* const unknown = dynamic_cast<const EncMeasureElemUnknown* const>(elem)) {
         std::cout
-                << " "
-                << "Unknown (TODO)"
-                << " (vocho: " << static_cast<int>(unknown->m_voice) << ")"
-                << "\n";
+            << " "
+            << "Unknown (TODO)"
+            << " (vocho: " << static_cast<int>(unknown->m_voice) << ")"
+            << "\n";
     }
     else
         qDebug() << "failed to convert:" << elem;
