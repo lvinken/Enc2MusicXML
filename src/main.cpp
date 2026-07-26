@@ -17,14 +17,17 @@
 /*  Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.           */
 /*****************************************************************************/
 
-#include <QCoreApplication>
 #include <QDataStream>
 #include <QFile>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <QtCore/QCommandLineParser>
 #include <QtCore/QCommandLineOption>
 #include <QtDebug>
 
 #include "analysisfile.h"
+#include "converter.h"
 #include "encfile.h"
 #include "mxmlconverter.h"
 #include "textfile.h"
@@ -63,9 +66,9 @@ static void read_file(const QString& filename, EncFile& ef)
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName("Enc2MusicXML");
-    QCoreApplication::setApplicationVersion("0.6");
+    QGuiApplication app(argc, argv);
+    QGuiApplication::setApplicationName("Enc2MusicXML");
+    QGuiApplication::setApplicationVersion("0.7");
 
     QCommandLineParser clp;
     clp.setApplicationDescription("Enc2MusicXML converts Encore files to MusicXML.");
@@ -115,7 +118,16 @@ int main(int argc, char *argv[])
         }
     }
     else {
-        qDebug() << "main() use GUI (TODO)";
+        qDebug() << "main() using GUI";
+        QQmlApplicationEngine engine;
+        Converter converter;
+        engine.rootContext()->setContextProperty("converter", &converter);
+        engine.rootContext()->setContextProperty("version", "0.1");
+        engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+        if (engine.rootObjects().isEmpty()) {
+            qDebug() << "no root objects";
+        }
+        return app.exec();
     }
 
     return 0;

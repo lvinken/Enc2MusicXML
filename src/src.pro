@@ -1,5 +1,6 @@
 QT      += core
-QT      -= gui
+QT      += qml
+QT      += quick
 
 CONFIG  += c++11
 
@@ -9,6 +10,7 @@ CONFIG  += console
 CONFIG  -= app_bundle
 
 SOURCES += analysisfile.cpp \
+           converter.cpp \
            encfile.cpp \
            main.cpp \
            mxmlconverter.cpp \
@@ -17,9 +19,12 @@ SOURCES += analysisfile.cpp \
            textfile.cpp
 
 HEADERS += analysisfile.h \
+           converter.h \
            commondefs.h \
            encfile.h \
            mxmlconverter.h \
            mxmlwriter.h \
            noteconnector.h \
            textfile.h
+
+RESOURCES += qml.qrc
