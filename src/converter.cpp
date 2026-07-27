@@ -12,7 +12,7 @@
 // copied from main.cpp
 // TODO: remove duplicated code
 
-static void read_file(const QString& filename, EncFile& ef)
+static QString read_file(const QString& filename, EncFile& ef)
 {
     qDebug() << "processing file" << filename;
     QFile file(filename);
@@ -28,7 +28,7 @@ static void read_file(const QString& filename, EncFile& ef)
         qWarning() << "  1. Open the .enc file in Encore 5.x on Windows";
         qWarning() << "  2. Save it (the new version will be in SCOW format)";
         qWarning() << "  3. Use Enc2MusicXML with the converted file";
-        return;
+        return "ERROR: ZBOT format detected.";
     }
 
     QDataStream data(&fileData, QIODevice::ReadOnly);
@@ -40,7 +40,10 @@ void Converter::convert(const QUrl& inUrl, const QUrl& outUrl){
     qDebug("Converter: displaystring inUrl %s outUrl %s", qPrintable(inUrl.toDisplayString()), qPrintable(outUrl.toDisplayString()));
     qDebug("Converter: localfile inUrl %s outUrl %s", qPrintable(inUrl.toLocalFile()), qPrintable(outUrl.toLocalFile()));
     EncFile ef;
-    read_file(inUrl.toLocalFile(), ef);
+    m_result = read_file(inUrl.toLocalFile(), ef);
+    if (m_result != "") {
+        return;
+    }
     QFile outFile(outUrl.toLocalFile());
     outFile.open(QFile::WriteOnly);
     MxmlConverter mf(ef, &outFile);
