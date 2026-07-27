@@ -16,7 +16,9 @@ static QString read_file(const QString& filename, EncFile& ef)
 {
     qDebug() << "processing file" << filename;
     QFile file(filename);
-    file.open(QIODevice::ReadOnly);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return("cannot open Encore file");
+    }
     QByteArray fileData = file.readAll();
     file.close();
 
@@ -32,7 +34,13 @@ static QString read_file(const QString& filename, EncFile& ef)
     }
 
     QDataStream data(&fileData, QIODevice::ReadOnly);
-    ef.read(data);
+    if (ef.read(data)) {
+        // TODO: could EncFile return more detailed errors ?
+        return "";
+    }
+    else {
+        return "error reading Encore file";
+    }
 }
 
 void Converter::convert(const QUrl& inUrl, const QUrl& outUrl){
@@ -45,7 +53,12 @@ void Converter::convert(const QUrl& inUrl, const QUrl& outUrl){
         return;
     }
     QFile outFile(outUrl.toLocalFile());
-    outFile.open(QFile::WriteOnly);
+    if (!outFile.open(QFile::WriteOnly)) {
+        m_result = "cannot open MusicXML file";
+        return;
+    }
     MxmlConverter mf(ef, &outFile);
     mf.convertEncToMxml();
+    // TODO: could MxmlConverter fail ? If so, report error.
+    m_result = "success";
 }
