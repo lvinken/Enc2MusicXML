@@ -1,24 +1,48 @@
-#include "converter.h"
+#include <QtDebug>
+#include <QFile>
 
-static int count { -1 };
+#include "converter.h"
+#include "encfile.h"
+#include "mxmlconverter.h"
+
+//---------------------------------------------------------
+// read_file - read an Encore file into ef
+//---------------------------------------------------------
+
+// copied from main.cpp
+// TODO: remove duplicated code
+
+static void read_file(const QString& filename, EncFile& ef)
+{
+    qDebug() << "processing file" << filename;
+    QFile file(filename);
+    file.open(QIODevice::ReadOnly);
+    QByteArray fileData = file.readAll();
+    file.close();
+
+    // Detectar formato ZBOT (cifrado) - magic "ZBOT" = 0x5A424F54
+    if (fileData.size() >= 4 && fileData.startsWith("ZBOT")) {
+        qWarning() << "ERROR: ZBOT format detected.";
+        qWarning() << "ZBOT files are encrypted and cannot be converted directly.";
+        qWarning() << "Please convert the file to SCOW format using Encore 5.x:";
+        qWarning() << "  1. Open the .enc file in Encore 5.x on Windows";
+        qWarning() << "  2. Save it (the new version will be in SCOW format)";
+        qWarning() << "  3. Use Enc2MusicXML with the converted file";
+        return;
+    }
+
+    QDataStream data(&fileData, QIODevice::ReadOnly);
+    ef.read(data);
+}
 
 void Converter::convert(const QUrl& inUrl, const QUrl& outUrl){
     qDebug("Converter: string inUrl %s outUrl %s", qPrintable(inUrl.toString()), qPrintable(outUrl.toString()));
     qDebug("Converter: displaystring inUrl %s outUrl %s", qPrintable(inUrl.toDisplayString()), qPrintable(outUrl.toDisplayString()));
     qDebug("Converter: localfile inUrl %s outUrl %s", qPrintable(inUrl.toLocalFile()), qPrintable(outUrl.toLocalFile()));
-    ++count;
-    qDebug("Converter: count %d", count);
-    QString res;
-    switch (count % 3) {
-    case 0: res = "success"; break;
-    case 1: res = "read error"; break;
-    case 2: res = "write error"; break;
-    default: res = "<none>"; break;
-    }
-    qDebug("Converter: res '%s' m_result '%s'", qPrintable(res), qPrintable(m_result));
-    if (res != m_result) {
-        m_result = res;
-        qDebug("Converter: m_result %s", qPrintable(m_result));
-        emit resultChanged(m_result);
-    }
+    EncFile ef;
+    read_file(inUrl.toLocalFile(), ef);
+    QFile outFile(outUrl.toLocalFile());
+    outFile.open(QFile::WriteOnly);
+    MxmlConverter mf(ef, &outFile);
+    mf.convertEncToMxml();
 }
