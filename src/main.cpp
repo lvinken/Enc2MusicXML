@@ -32,6 +32,8 @@
 #include "mxmlconverter.h"
 #include "textfile.h"
 
+static const QString applicationName { "Enc2MusicXML" };
+static const QString applicationVersion { "0.7" };
 
 //---------------------------------------------------------
 // read_file - read an Encore file into ef
@@ -67,8 +69,8 @@ static void read_file(const QString& filename, EncFile& ef)
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    QGuiApplication::setApplicationName("Enc2MusicXML");
-    QGuiApplication::setApplicationVersion("0.7");
+    QGuiApplication::setApplicationName(applicationName);
+    QGuiApplication::setApplicationVersion(applicationVersion);
 
     QCommandLineParser clp;
     clp.setApplicationDescription("Enc2MusicXML converts Encore files to MusicXML.");
@@ -122,7 +124,8 @@ int main(int argc, char *argv[])
         QQmlApplicationEngine engine;
         Converter converter;
         engine.rootContext()->setContextProperty("converter", &converter);
-        engine.rootContext()->setContextProperty("version", "0.1");
+        engine.rootContext()->setContextProperty("applicationName", applicationName);
+        engine.rootContext()->setContextProperty("applicationVersion", applicationVersion);
         engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
         if (engine.rootObjects().isEmpty()) {
             qDebug() << "no root objects";

@@ -21,7 +21,7 @@ ApplicationWindow {
     MessageDialog {
         id: aboutDialog
         buttons: MessageDialog.Ok
-        text: "ConverterGUI version " + version
+        text: applicationName + " version " + applicationVersion
     }
 
     FileDialog {
