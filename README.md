@@ -2,10 +2,15 @@ Enc2MusicXML is a Qt tool that converts Encore files to MusicXML.
 It was developed using Qt 5.8.0 and Apple LLVM version 7.3.0
 (clang-703.0.31) on OS X 10.11.6.
 
+Version 0.7 adds a trivial GUI implmented in QML, while still supporting the command-line. This version was developed using Qt 6.11.1 and Apple LLVM version 21.1.6
+(clang-2100.1.1.101) on macOS 26.5.2.
+
 ## Status
 
 In development. Enc2MusicXML extracts the same information from Encore files as does enc2ly,
 but the MusicXML export is still incomplete.
+
+Note: work is in progress to add native Encore import to [MuseScore](https://musescore.org/en), see [pull request 34129](https://github.com/musescore/MuseScore/pull/34129).
 
 Supported features:
 - Single and multi-staff parts
